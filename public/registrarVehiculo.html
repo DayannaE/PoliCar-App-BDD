@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POLI-CAR - Registrar Vehículo</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>POLI-CAR</h1>
+    <h2>Datos del Vehículo</h2>
+    <form id="registrarVehiculoForm">
+        <label for="ciCliente">CI Cliente:</label>
+        <input type="text" id="ciCliente" name="ciCliente" required><br><br>
+
+        <label for="matricula">Matrícula:</label>
+        <input type="text" id="matricula" name="matricula" required><br><br>
+
+        <label for="marca">Marca:</label>
+        <input type="text" id="marca" name="marca" required><br><br>
+
+        <label for="modelo">Modelo:</label>
+        <input type="text" id="modelo" name="modelo" required><br><br>
+
+        <button type="submit">Registrar</button>
+        <p id="message"></p>
+    </form>
+    <div class="nav-links">
+        <a href="dashboard.html">Volver al Dashboard</a>
+    </div>
+</div>
+<script src="js/main.js"></script>
+</body>
+</html>

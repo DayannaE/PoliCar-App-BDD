@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POLI-CAR - Consultar Reparación</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+  <h1>POLI-CAR</h1>
+  <h2>Consultar Reparaciones</h2>
+  <form id="consultarReparacionForm">
+    <h3>Datos del Cliente</h3>
+    <label for="ciConsulta">CI:</label>
+    <input type="text" id="ciConsulta" name="ci"><br><br>
+
+    <h3>Datos del Vehículo</h3>
+    <label for="matriculaConsulta">Matrícula:</label>
+    <input type="text" id="matriculaConsulta" name="matricula"><br><br>
+
+    <button type="submit">Consultar</button>
+    <p id="message"></p>
+  </form>
+  <div id="results">
+  </div>
+  <div class="nav-links">
+    <a href="dashboard.html">Volver al Dashboard</a>
+  </div>
+</div>
+<script src="js/main.js"></script>
+</body>
+</html>>
