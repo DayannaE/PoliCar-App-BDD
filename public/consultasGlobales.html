@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POLI-CAR - Consultas Globales</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .global-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .stat-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .filters {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .filter-row label {
+            min-width: 100px;
+        }
+        
+        .filter-row select, 
+        .filter-row input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .data-table th,
+        .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .data-table th {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .data-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .origen-nodo {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            color: white;
+        }
+        
+        .origen-sur {
+            background-color: #28a745;
+        }
+        
+        .origen-norte {
+            background-color: #dc3545;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div class="global-container">
+    <h1>POLI-CAR - Consultas Globales</h1>
+    <p>Vista consolidada de ambas sedes (Norte y Sur)</p>
+
+    <!-- Estadísticas Generales -->
+    <section id="estadisticas-section">
+        <h2>📊 Estadísticas Generales</h2>
+        <button id="cargarEstadisticas" class="btn">Cargar Estadísticas</button>
+        <div id="estadisticas-grid" class="stats-grid"></div>
+    </section>
+
+    <!-- Vehículos Globales -->
+    <section id="vehiculos-section">
+        <h2>🚗 Vehículos de Ambas Sedes</h2>
+        <button id="cargarVehiculos" class="btn">Cargar Vehículos</button>
+        <div id="vehiculos-content"></div>
+    </section>
+
+    <!-- Búsqueda Global de Reparaciones -->
+    <section id="reparaciones-section">
+        <h2>🔧 Búsqueda Global de Reparaciones</h2>
+        
+        <div class="filters">
+            <h3>Filtros de Búsqueda</h3>
+            <div class="filter-row">
+                <label for="filtro-sede">Sede:</label>
+                <select id="filtro-sede">
+                    <option value="">Todas las sedes</option>
+                    <option value="Norte">Norte</option>
+                    <option value="Sur">Sur</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <label for="filtro-estado">Estado:</label>
+                <select id="filtro-estado">
+                    <option value="">Todos los estados</option>
+                    <option value="En Proceso">En Proceso</option>
+                    <option value="Completada">Completada</option>
+                    <option value="Cancelada">Cancelada</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <label for="filtro-fecha">Desde:</label>
+                <input type="date" id="filtro-fecha">
+            </div>
+            <div class="filter-row">
+                <button id="buscarReparaciones" class="btn">Buscar Reparaciones</button>
+                <button id="limpiarFiltros" class="btn btn-secondary">Limpiar Filtros</button>
+            </div>
+        </div>
+        
+        <div id="reparaciones-content"></div>
+    </section>
+
+    <!-- Reporte Consolidado -->
+    <section id="reporte-section">
+        <h2>📈 Reporte Consolidado</h2>
+        <button id="generarReporte" class="btn">Generar Reporte</button>
+        <div id="reporte-content"></div>
+    </section>
+
+    <!-- Navegación -->
+    <div class="nav-links">
+        <a href="dashboard.html">Volver al Dashboard</a>
+        <a href="index.html">Volver al Login</a>
+    </div>
+
+    <!-- Área de mensajes -->
+    <div id="message"></div>
+</div>
+
+<script src="js/main.js"></script>
+<script>
+    // Funciones específicas para consultas globales
+    
+    // Cargar estadísticas generales
+    document.getElementById('cargarEstadisticas').addEventListener('click', async () => {
+        const contenedor = document.getElementById('estadisticas-grid');
+        contenedor.innerHTML = '<div class="loading">Cargando estadísticas...</div>';
+        
+        try {
+            const response = await fetch('/api/estadisticas/global');
+            const data = await response.json();
+            
+            if (data.success) {
+                mostrarEstadisticas(data.data);
+            } else {
+                contenedor.innerHTML = `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            contenedor.innerHTML = `<div class="error">Error de conexión: ${error.message}</div>`;
+        }
+    });
+    
+    // Cargar vehículos globales
+    document.getElementById('cargarVehiculos').addEventListener('click', async () => {
+        const contenedor = document.getElementById('vehiculos-content');
+        contenedor.innerHTML = '<div class="loading">Cargando vehículos...</div>';
+        
+        try {
+            const response = await fetch('/api/vehiculos/global');
+            const data = await response.json();
+            
+            if (data.success) {
+                mostrarVehiculos(data.data);
+            } else {
+                contenedor.innerHTML = `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            contenedor.innerHTML = `<div class="error">Error de conexión: ${error.message}</div>`;
+        }
+    });
+    
+    // Buscar reparaciones
+    document.getElementById('buscarReparaciones').addEventListener('click', async () => {
+        const contenedor = document.getElementById('reparaciones-content');
+        contenedor.innerHTML = '<div class="loading">Buscando reparaciones...</div>';
+        
+        const filtros = {
+            sede: document.getElementById('filtro-sede').value,
+            estado: document.getElementById('filtro-estado').value,
+            fechaDesde: document.getElementById('filtro-fecha').value
+        };
+        
+        const queryParams = new URLSearchParams();
+        Object.keys(filtros).forEach(key => {
+            if (filtros[key]) queryParams.append(key, filtros[key]);
+        });
+        
+        try {
+            const response = await fetch(`/api/reparaciones/global?${queryParams}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                mostrarReparaciones(data.data);
+            } else {
+                contenedor.innerHTML = `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            contenedor.innerHTML = `<div class="error">Error de conexión: ${error.message}</div>`;
+        }
+    });
+    
+    // Generar reporte consolidado
+    document.getElementById('generarReporte').addEventListener('click', async () => {
+        const contenedor = document.getElementById('reporte-content');
+        contenedor.innerHTML = '<div class="loading">Generando reporte...</div>';
+        
+        try {
+            const response = await fetch('/api/reporte/consolidado');
+            const data = await response.json();
+            
+            if (data.success) {
+                mostrarReporte(data.data);
+            } else {
+                contenedor.innerHTML = `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            contenedor.innerHTML = `<div class="error">Error de conexión: ${error.message}</div>`;
+        }
+    });
+    
+    // Limpiar filtros
+    document.getElementById('limpiarFiltros').addEventListener('click', () => {
+        document.getElementById('filtro-sede').value = '';
+        document.getElementById('filtro-estado').value = '';
+        document.getElementById('filtro-fecha').value = '';
+        document.getElementById('reparaciones-content').innerHTML = '';
+    });
+    
+    // Funciones auxiliares para mostrar datos
+    function mostrarEstadisticas(estadisticas) {
+        const contenedor = document.getElementById('estadisticas-grid');
+        contenedor.innerHTML = estadisticas.map(stat => `
+            <div class="stat-card">
+                <h3>Sede ${stat.Sede}</h3>
+                <div class="stat-value">${stat.Total_Vehiculos}</div>
+                <p>Vehículos Totales</p>
+                <hr>
+                <p>Reparaciones Activas: <strong>${stat.Reparaciones_Activas}</strong></p>
+                <p>Reparaciones Completadas: <strong>${stat.Reparaciones_Completadas}</strong></p>
+                <p>Costo Promedio: <strong>$${stat.Costo_Promedio_Reparacion ? stat.Costo_Promedio_Reparacion.toFixed(2) : '0.00'}</strong></p>
+                <p>Ingresos Totales: <strong>$${stat.Ingresos_Totales ? stat.Ingresos_Totales.toFixed(2) : '0.00'}</strong></p>
+            </div>
+        `).join('');
+    }
+    
+    function mostrarVehiculos(vehiculos) {
+        const contenedor = document.getElementById('vehiculos-content');
+        if (vehiculos.length === 0) {
+            contenedor.innerHTML = '<p>No se encontraron vehículos.</p>';
+            return;
+        }
+        
+        contenedor.innerHTML = `
+            <p>Total de vehículos encontrados: <strong>${vehiculos.length}</strong></p>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>CI Cliente</th>
+                        <th>Matrícula</th>
+                        <th>Marca</th>
+                        <th>Modelo</th>
+                        <th>Sede</th>
+                        <th>Origen</th>
+                        <th>Fecha Registro</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${vehiculos.map(v => `
+                        <tr>
+                            <td>${v.Vehiculo_ID}</td>
+                            <td>${v.CI_Cliente}</td>
+                            <td>${v.Matricula}</td>
+                            <td>${v.Marca}</td>
+                            <td>${v.Modelo}</td>
+                            <td>${v.Sede}</td>
+                            <td><span class="origen-nodo origen-${v.Origen_Nodo.toLowerCase()}">${v.Origen_Nodo}</span></td>
+                            <td>${new Date(v.Fecha_Registro).toLocaleDateString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    function mostrarReparaciones(reparaciones) {
+        const contenedor = document.getElementById('reparaciones-content');
+        if (reparaciones.length === 0) {
+            contenedor.innerHTML = '<p>No se encontraron reparaciones con los criterios especificados.</p>';
+            return;
+        }
+        
+        contenedor.innerHTML = `
+            <p>Reparaciones encontradas: <strong>${reparaciones.length}</strong></p>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Vehículo ID</th>
+                        <th>Empleado ID</th>
+                        <th>Descripción</th>
+                        <th>Estado</th>
+                        <th>Costo</th>
+                        <th>Sede</th>
+                        <th>Origen</th>
+                        <th>Fecha Inicio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${reparaciones.map(r => `
+                        <tr>
+                            <td>${r.Reparacion_ID}</td>
+                            <td>${r.Vehiculo_ID}</td>
+                            <td>${r.Empleado_ID}</td>
+                            <td>${r.Descripcion}</td>
+                            <td>${r.Estado}</td>
+                            <td>$${r.Costo_Total ? r.Costo_Total.toFixed(2) : '0.00'}</td>
+                            <td>${r.Sede}</td>
+                            <td><span class="origen-nodo origen-${r.Origen_Nodo.toLowerCase()}">${r.Origen_Nodo}</span></td>
+                            <td>${new Date(r.Fecha_Inicio).toLocaleDateString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    function mostrarReporte(reporte) {
+        const contenedor = document.getElementById('reporte-content');
+        contenedor.innerHTML = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tipo/Sede</th>
+                        <th>Vehículos</th>
+                        <th>Empleados</th>
+                        <th>Repuestos</th>
+                        <th>Reparaciones</th>
+                        <th>Ingresos Totales</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${reporte.map(r => `
+                        <tr>
+                            <td><strong>${r.Tipo}</strong></td>
+                            <td>${r.Total_Vehiculos}</td>
+                            <td>${r.Total_Empleados}</td>
+                            <td>${r.Total_Repuestos}</td>
+                            <td>${r.Total_Reparaciones}</td>
+                            <td>$${r.Ingresos_Totales ? r.Ingresos_Totales.toFixed(2) : '0.00'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POLI-CAR - Gestionar Empleados</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+  <h1>POLI-CAR</h1>
+  <h2>👥 Gestionar Empleados</h2>
+  
+  <!-- Controles superiores -->
+  <div class="controles-superiores">
+    <div class="busqueda-container">
+      <input type="text" id="busquedaEmpleados" placeholder="🔍 Buscar por cédula, nombre...">
+    </div>
+    <div class="acciones-container">
+      <button id="btnNuevoEmpleado" class="btn-nuevo">➕ Nuevo Empleado</button>
+      <button id="btnRefrescar" class="btn-refrescar">🔄 Refrescar</button>
+    </div>
+  </div>
+
+  <!-- Mensaje de estado -->
+  <p id="message"></p>
+
+  <!-- Tabla de empleados -->
+  <div id="empleadosContainer">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando empleados...</p>
+    </div>
+  </div>
+
+  <!-- Modal para editar/crear empleado -->
+  <div id="modalEmpleado" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Editar Empleado</h3>
+        <span class="close">&times;</span>
+      </div>
+      <form id="formEmpleado">
+        <div class="form-group">
+          <label for="modalCedulaEmpleado">Cédula:</label>
+          <input type="text" id="modalCedulaEmpleado" name="cedulaEmpleado" required>
+        </div>
+        <div class="form-group">
+          <label for="modalNombre">Nombre:</label>
+          <input type="text" id="modalNombre" name="nombre" required>
+        </div>
+        <div class="form-group">
+          <label for="modalFechaIngreso">Fecha de Ingreso:</label>
+          <input type="date" id="modalFechaIngreso" name="fechaIngreso">
+        </div>
+        <div class="form-group">
+          <label for="modalSueldo">Sueldo:</label>
+          <input type="number" id="modalSueldo" name="sueldo" step="0.01" min="0">
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
+          <button type="submit" id="btnGuardar" class="btn-guardar">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación para eliminar -->
+  <div id="modalConfirmar" class="modal">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3>Confirmar Eliminación</h3>
+        <span class="close-confirm">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p>¿Está seguro que desea eliminar al empleado <strong id="empleadoAEliminar"></strong>?</p>
+        <p class="warning">⚠️ Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btnCancelarEliminar" class="btn-cancelar">Cancelar</button>
+        <button type="button" id="btnConfirmarEliminar" class="btn-eliminar">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-links">
+    <a href="dashboard.html">🏠 Volver al Dashboard</a>
+  </div>
+</div>
+
+<script src="js/main.js"></script>
+<script>
+// Variables globales
+let empleadosData = [];
+let editandoEmpleado = null;
+let empleadoAEliminar = null;
+
+// Elementos del DOM
+const empleadosContainer = document.getElementById('empleadosContainer');
+const busquedaInput = document.getElementById('busquedaEmpleados');
+const btnNuevoEmpleado = document.getElementById('btnNuevoEmpleado');
+const btnRefrescar = document.getElementById('btnRefrescar');
+const modalEmpleado = document.getElementById('modalEmpleado');
+const modalConfirmar = document.getElementById('modalConfirmar');
+const formEmpleado = document.getElementById('formEmpleado');
+const modalTitle = document.getElementById('modalTitle');
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
+  cargarEmpleados();
+  
+  // Búsqueda en tiempo real
+  busquedaInput.addEventListener('input', filtrarEmpleados);
+  
+  // Botones principales
+  btnNuevoEmpleado.addEventListener('click', abrirModalNuevo);
+  btnRefrescar.addEventListener('click', cargarEmpleados);
+  
+  // Modal eventos
+  document.querySelector('.close').addEventListener('click', cerrarModal);
+  document.querySelector('.close-confirm').addEventListener('click', cerrarModalConfirmar);
+  document.getElementById('btnCancelar').addEventListener('click', cerrarModal);
+  document.getElementById('btnCancelarEliminar').addEventListener('click', cerrarModalConfirmar);
+  
+  // Form submit
+  formEmpleado.addEventListener('submit', guardarEmpleado);
+  
+  // Confirmar eliminación
+  document.getElementById('btnConfirmarEliminar').addEventListener('click', confirmarEliminacion);
+  
+  // Cerrar modal al hacer click fuera
+  window.addEventListener('click', (event) => {
+    if (event.target === modalEmpleado) cerrarModal();
+    if (event.target === modalConfirmar) cerrarModalConfirmar();
+  });
+});
+
+// Cargar empleados desde el servidor
+async function cargarEmpleados() {
+  try {
+    mostrarCargando();
+    const response = await fetch('/api/empleados');
+    const data = await response.json();
+    
+    if (data.success) {
+      empleadosData = data.data;
+      mostrarEmpleados(empleadosData);
+      showMessage('message', data.message, true);
+    } else {
+      showMessage('message', data.message || 'Error al cargar empleados', false);
+      empleadosContainer.innerHTML = '<p class="error">Error al cargar empleados</p>';
+    }
+  } catch (error) {
+    console.error('Error cargando empleados:', error);
+    showMessage('message', 'Error de conexión al cargar empleados', false);
+    empleadosContainer.innerHTML = '<p class="error">Error de conexión</p>';
+  }
+}
+
+// Mostrar empleados en la tabla
+function mostrarEmpleados(empleados) {
+  if (empleados.length === 0) {
+    empleadosContainer.innerHTML = '<p class="no-data">No hay empleados registrados</p>';
+    return;
+  }
+
+  let html = `
+    <div class="tabla-responsive">
+      <table class="tabla-gestion">
+        <thead>
+          <tr>
+            <th>Cédula</th>
+            <th>Nombre</th>
+            <th>Fecha Ingreso</th>
+            <th>Sueldo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  empleados.forEach(empleado => {
+    const fechaIngreso = empleado.fecha_ingreso 
+      ? new Date(empleado.fecha_ingreso).toLocaleDateString('es-ES')
+      : 'N/A';
+      
+    const sueldo = empleado.sueldo 
+      ? `$${parseFloat(empleado.sueldo).toFixed(2)}`
+      : 'N/A';
+    
+    html += `
+      <tr>
+        <td><strong>${empleado.id_empleado}</strong></td>
+        <td>${empleado.nombre || 'N/A'}</td>
+        <td>${fechaIngreso}</td>
+        <td class="precio">${sueldo}</td>
+        <td class="acciones">
+          <button class="btn-editar" onclick="editarEmpleado('${empleado.id_empleado}')">✏️ Editar</button>
+          <button class="btn-eliminar" onclick="eliminarEmpleado('${empleado.id_empleado}')">🗑️ Eliminar</button>
+        </td>
+      </tr>
+    `;
+  });
+  
+  html += `
+        </tbody>
+      </table>
+    </div>
+    <div class="tabla-info">
+      <p>Total de empleados: <strong>${empleados.length}</strong></p>
+    </div>
+  `;
+  
+  empleadosContainer.innerHTML = html;
+}
+
+// Filtrar empleados por búsqueda
+function filtrarEmpleados() {
+  const termino = busquedaInput.value.toLowerCase();
+  
+  if (!termino) {
+    mostrarEmpleados(empleadosData);
+    return;
+  }
+  
+  const empleadosFiltrados = empleadosData.filter(empleado => {
+    return (
+      empleado.id_empleado.toLowerCase().includes(termino) ||
+      empleado.nombre?.toLowerCase().includes(termino)
+    );
+  });
+  
+  mostrarEmpleados(empleadosFiltrados);
+}
+
+// Abrir modal para nuevo empleado
+function abrirModalNuevo() {
+  editandoEmpleado = null;
+  modalTitle.textContent = 'Nuevo Empleado';
+  formEmpleado.reset();
+  document.getElementById('modalCedulaEmpleado').readOnly = false;
+  modalEmpleado.style.display = 'block';
+}
+
+// Editar empleado
+function editarEmpleado(cedula) {
+  const empleado = empleadosData.find(e => e.id_empleado === cedula);
+  if (!empleado) return;
+  
+  editandoEmpleado = cedula;
+  modalTitle.textContent = 'Editar Empleado';
+  
+  // Llenar el formulario
+  document.getElementById('modalCedulaEmpleado').value = empleado.id_empleado;
+  document.getElementById('modalCedulaEmpleado').readOnly = true;
+  document.getElementById('modalNombre').value = empleado.nombre || '';
+  document.getElementById('modalSueldo').value = empleado.sueldo || '';
+  
+  if (empleado.fecha_ingreso) {
+    const fecha = new Date(empleado.fecha_ingreso);
+    document.getElementById('modalFechaIngreso').value = fecha.toISOString().split('T')[0];
+  }
+  
+  modalEmpleado.style.display = 'block';
+}
+
+// Eliminar empleado
+function eliminarEmpleado(cedula) {
+  empleadoAEliminar = cedula;
+  const empleado = empleadosData.find(e => e.cedula_empleado === cedula);
+  document.getElementById('empleadoAEliminar').textContent = empleado ? empleado.nombre : cedula;
+  modalConfirmar.style.display = 'block';
+}
+
+// Guardar empleado (crear o actualizar)
+async function guardarEmpleado(event) {
+  event.preventDefault();
+  
+  const formData = new FormData(formEmpleado);
+  const empleadoData = {
+    cedulaEmpleado: formData.get('cedulaEmpleado'),
+    nombre: formData.get('nombre'),
+    fechaIngreso: formData.get('fechaIngreso') || null,
+    sueldo: parseFloat(formData.get('sueldo')) || null
+  };
+  
+  try {
+    let response;
+    if (editandoEmpleado) {
+      // Actualizar
+      response = await fetch(`/api/empleados/${editandoEmpleado}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(empleadoData)
+      });
+    } else {
+      // Crear nuevo
+      response = await fetch('/api/empleados', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cedula: empleadoData.cedulaEmpleado,
+          nombre: empleadoData.nombre,
+          fechaContratacion: empleadoData.fechaIngreso,
+          salario: empleadoData.sueldo
+        })
+      });
+    }
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showMessage('message', data.message, true);
+      cerrarModal();
+      cargarEmpleados();
+    } else {
+      showMessage('message', data.message || 'Error al guardar empleado', false);
+    }
+  } catch (error) {
+    console.error('Error guardando empleado:', error);
+    showMessage('message', 'Error de conexión al guardar empleado', false);
+  }
+}
+
+// Confirmar eliminación
+async function confirmarEliminacion() {
+  if (!empleadoAEliminar) return;
+  
+  try {
+    const response = await fetch(`/api/empleados/${empleadoAEliminar}`, {
+      method: 'DELETE'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showMessage('message', data.message, true);
+      cerrarModalConfirmar();
+      cargarEmpleados();
+    } else {
+      showMessage('message', data.message || 'Error al eliminar empleado', false);
+    }
+  } catch (error) {
+    console.error('Error eliminando empleado:', error);
+    showMessage('message', 'Error de conexión al eliminar empleado', false);
+  }
+}
+
+// Cerrar modales
+function cerrarModal() {
+  modalEmpleado.style.display = 'none';
+  editandoEmpleado = null;
+  formEmpleado.reset();
+}
+
+function cerrarModalConfirmar() {
+  modalConfirmar.style.display = 'none';
+  empleadoAEliminar = null;
+}
+
+// Mostrar estado de carga
+function mostrarCargando() {
+  empleadosContainer.innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando empleados...</p>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

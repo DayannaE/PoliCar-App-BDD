@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POLI-CAR - Gestionar Repuestos</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+  <h1>POLI-CAR</h1>
+  <h2>🔧 Gestionar Repuestos</h2>
+  
+  <!-- Controles superiores -->
+  <div class="controles-superiores">
+    <div class="busqueda-container">
+      <input type="text" id="busquedaRepuestos" placeholder="🔍 Buscar por ID, nombre, tipo...">
+    </div>
+    <div class="acciones-container">
+      <button id="btnNuevoRepuesto" class="btn-nuevo">➕ Nuevo Repuesto</button>
+      <button id="btnRefrescar" class="btn-refrescar">🔄 Refrescar</button>
+    </div>
+  </div>
+
+  <!-- Mensaje de estado -->
+  <p id="message"></p>
+
+  <!-- Tabla de repuestos -->
+  <div id="repuestosContainer">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando repuestos...</p>
+    </div>
+  </div>
+
+  <!-- Modal para editar/crear repuesto -->
+  <div id="modalRepuesto" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Editar Repuesto</h3>
+        <span class="close">&times;</span>
+      </div>
+      <form id="formRepuesto">
+        <div class="form-group">
+          <label for="modalIdRepuesto">ID Repuesto:</label>
+          <input type="number" id="modalIdRepuesto" name="idRepuesto" required>
+        </div>
+        <div class="form-group">
+          <label for="modalNombre">Nombre:</label>
+          <input type="text" id="modalNombre" name="nombre" required>
+        </div>
+        <div class="form-group">
+          <label for="modalTipo">Tipo:</label>
+          <input type="text" id="modalTipo" name="tipo" required>
+        </div>
+        <div class="form-group">
+          <label for="modalDescripcion">Descripción:</label>
+          <textarea id="modalDescripcion" name="descripcion" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="modalCantidad">Cantidad Disponible:</label>
+          <input type="number" id="modalCantidad" name="cantidadDisponible" min="0" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
+          <button type="submit" id="btnGuardar" class="btn-guardar">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación para eliminar -->
+  <div id="modalConfirmar" class="modal">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3>Confirmar Eliminación</h3>
+        <span class="close-confirm">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p>¿Está seguro que desea eliminar el repuesto <strong id="repuestoAEliminar"></strong>?</p>
+        <p class="warning">⚠️ Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btnCancelarEliminar" class="btn-cancelar">Cancelar</button>
+        <button type="button" id="btnConfirmarEliminar" class="btn-eliminar">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-links">
+    <a href="dashboard.html">🏠 Volver al Dashboard</a>
+  </div>
+</div>
+
+<script src="js/main.js"></script>
+<script>
+// Variables globales
+let repuestosData = [];
+let editandoRepuesto = null;
+let repuestoAEliminar = null;
+
+// Elementos del DOM
+const repuestosContainer = document.getElementById('repuestosContainer');
+const busquedaInput = document.getElementById('busquedaRepuestos');
+const btnNuevoRepuesto = document.getElementById('btnNuevoRepuesto');
+const btnRefrescar = document.getElementById('btnRefrescar');
+const modalRepuesto = document.getElementById('modalRepuesto');
+const modalConfirmar = document.getElementById('modalConfirmar');
+const formRepuesto = document.getElementById('formRepuesto');
+const modalTitle = document.getElementById('modalTitle');
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
+  cargarRepuestos();
+  
+  // Búsqueda en tiempo real
+  busquedaInput.addEventListener('input', filtrarRepuestos);
+  
+  // Botones principales
+  btnNuevoRepuesto.addEventListener('click', abrirModalNuevo);
+  btnRefrescar.addEventListener('click', cargarRepuestos);
+  
+  // Modal eventos
+  document.querySelector('.close').addEventListener('click', cerrarModal);
+  document.querySelector('.close-confirm').addEventListener('click', cerrarModalConfirmar);
+  document.getElementById('btnCancelar').addEventListener('click', cerrarModal);
+  document.getElementById('btnCancelarEliminar').addEventListener('click', cerrarModalConfirmar);
+  
+  // Form submit
+  formRepuesto.addEventListener('submit', guardarRepuesto);
+  
+  // Confirmar eliminación
+  document.getElementById('btnConfirmarEliminar').addEventListener('click', confirmarEliminacion);
+  
+  // Cerrar modal al hacer click fuera
+  window.addEventListener('click', (event) => {
+    if (event.target === modalRepuesto) cerrarModal();
+    if (event.target === modalConfirmar) cerrarModalConfirmar();
+  });
+});
+
+// Cargar repuestos desde el servidor
+async function cargarRepuestos() {
+  try {
+    mostrarCargando();
+    const response = await fetch('/api/repuestos');
+    const data = await response.json();
+    
+    if (data.success) {
+      repuestosData = data.data;
+      mostrarRepuestos(repuestosData);
+      showMessage('message', data.message, true);
+    } else {
+      showMessage('message', data.message || 'Error al cargar repuestos', false);
+      repuestosContainer.innerHTML = '<p class="error">Error al cargar repuestos</p>';
+    }
+  } catch (error) {
+    console.error('Error cargando repuestos:', error);
+    showMessage('message', 'Error de conexión al cargar repuestos', false);
+    repuestosContainer.innerHTML = '<p class="error">Error de conexión</p>';
+  }
+}
+
+// Mostrar repuestos en la tabla
+function mostrarRepuestos(repuestos) {
+  if (repuestos.length === 0) {
+    repuestosContainer.innerHTML = '<p class="no-data">No hay repuestos registrados</p>';
+    return;
+  }
+
+  let html = `
+    <div class="tabla-responsive">
+      <table class="tabla-gestion">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  repuestos.forEach(repuesto => {
+    const descripcionCorta = repuesto.descripcion && repuesto.descripcion.length > 50 
+      ? repuesto.descripcion.substring(0, 50) + '...'
+      : repuesto.descripcion || 'N/A';
+    
+    // Estado de cantidad con colores
+    let estadoCantidad = '';
+    if (repuesto.cantidad_disponible === 0) {
+      estadoCantidad = '<span style="color: #dc3545; font-weight: bold;">❌ Agotado</span>';
+    } else if (repuesto.cantidad_disponible <= 5) {
+      estadoCantidad = `<span style="color: #ffc107; font-weight: bold;">⚠️ ${repuesto.cantidad_disponible}</span>`;
+    } else {
+      estadoCantidad = `<span style="color: #28a745; font-weight: bold;">✅ ${repuesto.cantidad_disponible}</span>`;
+    }
+    
+    html += `
+      <tr>
+        <td><strong>${repuesto.id_repuesto}</strong></td>
+        <td>${repuesto.nombre || 'N/A'}</td>
+        <td>${repuesto.tipo || 'N/A'}</td>
+        <td title="${repuesto.descripcion || ''}">${descripcionCorta}</td>
+        <td>${estadoCantidad}</td>
+        <td class="acciones">
+          <button class="btn-editar" onclick="editarRepuesto(${repuesto.id_repuesto})">✏️ Editar</button>
+          <button class="btn-eliminar" onclick="eliminarRepuesto(${repuesto.id_repuesto})">🗑️ Eliminar</button>
+        </td>
+      </tr>
+    `;
+  });
+  
+  html += `
+        </tbody>
+      </table>
+    </div>
+    <div class="tabla-info">
+      <p>Total de repuestos: <strong>${repuestos.length}</strong></p>
+    </div>
+  `;
+  
+  repuestosContainer.innerHTML = html;
+}
+
+// Filtrar repuestos por búsqueda
+function filtrarRepuestos() {
+  const termino = busquedaInput.value.toLowerCase();
+  
+  if (!termino) {
+    mostrarRepuestos(repuestosData);
+    return;
+  }
+  
+  const repuestosFiltrados = repuestosData.filter(repuesto => {
+    return (
+      repuesto.id_repuesto.toString().includes(termino) ||
+      repuesto.nombre?.toLowerCase().includes(termino) ||
+      repuesto.tipo?.toLowerCase().includes(termino) ||
+      repuesto.descripcion?.toLowerCase().includes(termino)
+    );
+  });
+  
+  mostrarRepuestos(repuestosFiltrados);
+}
+
+// Abrir modal para nuevo repuesto
+function abrirModalNuevo() {
+  editandoRepuesto = null;
+  modalTitle.textContent = 'Nuevo Repuesto';
+  formRepuesto.reset();
+  document.getElementById('modalIdRepuesto').readOnly = false;
+  modalRepuesto.style.display = 'block';
+}
+
+// Editar repuesto
+function editarRepuesto(id) {
+  const repuesto = repuestosData.find(r => r.id_repuesto === id);
+  if (!repuesto) return;
+  
+  editandoRepuesto = id;
+  modalTitle.textContent = 'Editar Repuesto';
+  
+  // Llenar el formulario
+  document.getElementById('modalIdRepuesto').value = repuesto.id_repuesto;
+  document.getElementById('modalIdRepuesto').readOnly = true;
+  document.getElementById('modalNombre').value = repuesto.nombre || '';
+  document.getElementById('modalTipo').value = repuesto.tipo || '';
+  document.getElementById('modalDescripcion').value = repuesto.descripcion || '';
+  document.getElementById('modalCantidad').value = repuesto.cantidad_disponible || 0;
+  
+  modalRepuesto.style.display = 'block';
+}
+
+// Eliminar repuesto
+function eliminarRepuesto(id) {
+  repuestoAEliminar = id;
+  const repuesto = repuestosData.find(r => r.id_repuesto === id);
+  document.getElementById('repuestoAEliminar').textContent = repuesto ? repuesto.nombre : `ID: ${id}`;
+  modalConfirmar.style.display = 'block';
+}
+
+// Guardar repuesto (crear o actualizar)
+async function guardarRepuesto(event) {
+  event.preventDefault();
+  
+  const formData = new FormData(formRepuesto);
+  const repuestoData = {
+    idRepuesto: parseInt(formData.get('idRepuesto')),
+    nombre: formData.get('nombre'),
+    tipo: formData.get('tipo'),
+    descripcion: formData.get('descripcion'),
+    cantidadDisponible: parseInt(formData.get('cantidadDisponible'))
+  };
+  
+  try {
+    let response;
+    if (editandoRepuesto) {
+      // Actualizar
+      response = await fetch(`/api/repuestos/${editandoRepuesto}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(repuestoData)
+      });
+    } else {
+      // Crear nuevo
+      response = await fetch('/api/repuestos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idRepuesto: repuestoData.idRepuesto,
+          descripcionRepuesto: repuestoData.nombre,
+          cantidadRepuesto: repuestoData.cantidadDisponible
+        })
+      });
+    }
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showMessage('message', data.message, true);
+      cerrarModal();
+      cargarRepuestos();
+    } else {
+      showMessage('message', data.message || 'Error al guardar repuesto', false);
+    }
+  } catch (error) {
+    console.error('Error guardando repuesto:', error);
+    showMessage('message', 'Error de conexión al guardar repuesto', false);
+  }
+}
+
+// Confirmar eliminación
+async function confirmarEliminacion() {
+  if (!repuestoAEliminar) return;
+  
+  try {
+    const response = await fetch(`/api/repuestos/${repuestoAEliminar}`, {
+      method: 'DELETE'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showMessage('message', data.message, true);
+      cerrarModalConfirmar();
+      cargarRepuestos();
+    } else {
+      showMessage('message', data.message || 'Error al eliminar repuesto', false);
+    }
+  } catch (error) {
+    console.error('Error eliminando repuesto:', error);
+    showMessage('message', 'Error de conexión al eliminar repuesto', false);
+  }
+}
+
+// Cerrar modales
+function cerrarModal() {
+  modalRepuesto.style.display = 'none';
+  editandoRepuesto = null;
+  formRepuesto.reset();
+}
+
+function cerrarModalConfirmar() {
+  modalConfirmar.style.display = 'none';
+  repuestoAEliminar = null;
+}
+
+// Mostrar estado de carga
+function mostrarCargando() {
+  repuestosContainer.innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando repuestos...</p>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

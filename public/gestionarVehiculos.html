@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POLI-CAR - Gestionar Vehículos</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+  <h1>POLI-CAR</h1>
+  <h2>🚗 Gestionar Vehículos</h2>
+  
+  <!-- Controles superiores -->
+  <div class="controles-superiores">
+    <div class="busqueda-container">
+      <input type="text" id="busquedaVehiculos" placeholder="🔍 Buscar por matrícula, marca, modelo o cliente...">
+    </div>
+    <div class="acciones-container">
+      <button id="btnNuevoVehiculo" class="btn-nuevo">➕ Nuevo Vehículo</button>
+      <button id="btnRefrescar" class="btn-refrescar">🔄 Refrescar</button>
+    </div>
+  </div>
+
+  <!-- Mensaje de estado -->
+  <p id="message"></p>
+
+  <!-- Tabla de vehículos -->
+  <div id="vehiculosContainer">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando vehículos...</p>
+    </div>
+  </div>
+
+  <!-- Modal para editar/crear vehículo -->
+  <div id="modalVehiculo" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Editar Vehículo</h3>
+        <span class="close">&times;</span>
+      </div>
+      <form id="formVehiculo">
+        <div class="form-group">
+          <label for="modalMatricula">Matrícula:</label>
+          <input type="text" id="modalMatricula" name="matricula" required>
+        </div>
+        <div class="form-group">
+          <label for="modalCedulaCliente">Cédula Cliente:</label>
+          <input type="text" id="modalCedulaCliente" name="cedulaCliente" required>
+          <div id="clientesSugeridos" class="sugerencias-container"></div>
+          <small class="help-text">💡 Escribe para ver clientes disponibles</small>
+        </div>
+        <div class="form-group">
+          <label for="modalMarca">Marca:</label>
+          <input type="text" id="modalMarca" name="marca" required>
+        </div>
+        <div class="form-group">
+          <label for="modalModelo">Modelo:</label>
+          <input type="text" id="modalModelo" name="modelo" required>
+        </div>
+        <div class="form-group">
+          <label for="modalFechaCompra">Fecha de Compra:</label>
+          <input type="date" id="modalFechaCompra" name="fechaCompra">
+        </div>
+        <div class="form-group">
+          <label for="modalAnio">Año:</label>
+          <input type="number" id="modalAnio" name="anio" min="1900" max="2030">
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
+          <button type="submit" id="btnGuardar" class="btn-guardar">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación para eliminar -->
+  <div id="modalConfirmar" class="modal">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3>Confirmar Eliminación</h3>
+        <span class="close-confirm">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p>¿Está seguro que desea eliminar el vehículo <strong id="vehiculoAEliminar"></strong>?</p>
+        <p class="warning">⚠️ Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btnCancelarEliminar" class="btn-cancelar">Cancelar</button>
+        <button type="button" id="btnConfirmarEliminar" class="btn-eliminar">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-links">
+    <a href="dashboard.html">🏠 Volver al Dashboard</a>
+  </div>
+</div>
+
+<script src="js/main.js"></script>
+<script>
+// Variables globales
+let vehiculosData = [];
+let clientesData = [];
+let editandoVehiculo = null;
+let vehiculoAEliminar = null;
+
+// Elementos del DOM
+const vehiculosContainer = document.getElementById('vehiculosContainer');
+const busquedaInput = document.getElementById('busquedaVehiculos');
+const btnNuevoVehiculo = document.getElementById('btnNuevoVehiculo');
+const btnRefrescar = document.getElementById('btnRefrescar');
+const modalVehiculo = document.getElementById('modalVehiculo');
+const modalConfirmar = document.getElementById('modalConfirmar');
+const formVehiculo = document.getElementById('formVehiculo');
+const modalTitle = document.getElementById('modalTitle');
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
+  cargarVehiculos();
+  cargarClientes();
+  
+  // Búsqueda en tiempo real
+  busquedaInput.addEventListener('input', filtrarVehiculos);
+  
+  // Autocompletado de clientes
+  document.getElementById('modalCedulaCliente').addEventListener('input', mostrarSugerenciasClientes);
+  document.getElementById('modalCedulaCliente').addEventListener('focus', mostrarSugerenciasClientes);
+  document.getElementById('modalCedulaCliente').addEventListener('blur', () => {
+    setTimeout(() => ocultarSugerenciasClientes(), 200);
+  });
+  
+  // Botones principales
+  btnNuevoVehiculo.addEventListener('click', abrirModalNuevo);
+  btnRefrescar.addEventListener('click', cargarVehiculos);
+  
+  // Modal eventos
+  document.querySelector('.close').addEventListener('click', cerrarModal);
+  document.querySelector('.close-confirm').addEventListener('click', cerrarModalConfirmar);
+  document.getElementById('btnCancelar').addEventListener('click', cerrarModal);
+  document.getElementById('btnCancelarEliminar').addEventListener('click', cerrarModalConfirmar);
+  
+  // Form submit
+  formVehiculo.addEventListener('submit', guardarVehiculo);
+  
+  // Confirmar eliminación
+  document.getElementById('btnConfirmarEliminar').addEventListener('click', confirmarEliminacion);
+  
+  // Cerrar modal al hacer click fuera
+  window.addEventListener('click', (event) => {
+    if (event.target === modalVehiculo) cerrarModal();
+    if (event.target === modalConfirmar) cerrarModalConfirmar();
+  });
+});
+
+// Cargar clientes desde el servidor
+async function cargarClientes() {
+  try {
+    const response = await fetch('/api/clientes');
+    const data = await response.json();
+    
+    if (data.success) {
+      clientesData = data.data;
+      console.log(`✅ ${clientesData.length} clientes cargados`);
+    } else {
+      console.warn('⚠️ Error cargando clientes:', data.message);
+    }
+  } catch (error) {
+    console.error('❌ Error cargando clientes:', error);
+  }
+}
+
+// Mostrar sugerencias de clientes
+function mostrarSugerenciasClientes() {
+  const input = document.getElementById('modalCedulaCliente');
+  const sugerenciasContainer = document.getElementById('clientesSugeridos');
+  const termino = input.value.toLowerCase();
+  
+  if (!termino || clientesData.length === 0) {
+    sugerenciasContainer.style.display = 'none';
+    return;
+  }
+  
+  const clientesFiltrados = clientesData.filter(cliente => 
+    cliente.cedula.toLowerCase().includes(termino) ||
+    cliente.nombre.toLowerCase().includes(termino) ||
+    (cliente.apellido && cliente.apellido.toLowerCase().includes(termino))
+  ).slice(0, 5); // Mostrar máximo 5 sugerencias
+  
+  if (clientesFiltrados.length === 0) {
+    sugerenciasContainer.style.display = 'none';
+    return;
+  }
+  
+  let html = '';
+  clientesFiltrados.forEach(cliente => {
+    html += `
+      <div class="sugerencia-item" onclick="seleccionarCliente('${cliente.cedula}', '${cliente.nombre}', '${cliente.apellido || ''}')">
+        <div class="sugerencia-cedula">${cliente.cedula}</div>
+        <div class="sugerencia-nombre">${cliente.nombre} ${cliente.apellido || ''} - ${cliente.zona}</div>
+      </div>
+    `;
+  });
+  
+  sugerenciasContainer.innerHTML = html;
+  sugerenciasContainer.style.display = 'block';
+}
+
+// Seleccionar cliente de las sugerencias
+function seleccionarCliente(cedula, nombre, apellido) {
+  document.getElementById('modalCedulaCliente').value = cedula;
+  ocultarSugerenciasClientes();
+}
+
+// Ocultar sugerencias
+function ocultarSugerenciasClientes() {
+  document.getElementById('clientesSugeridos').style.display = 'none';
+}
+
+// Cargar vehículos desde el servidor
+async function cargarVehiculos() {
+  try {
+    mostrarCargando();
+    const response = await fetch('/api/vehiculos');
+    const data = await response.json();
+    
+    if (data.success) {
+      vehiculosData = data.data;
+      mostrarVehiculos(vehiculosData);
+      showMessage('message', data.message, true);
+    } else {
+      showMessage('message', data.message || 'Error al cargar vehículos', false);
+      vehiculosContainer.innerHTML = '<p class="error">Error al cargar vehículos</p>';
+    }
+  } catch (error) {
+    console.error('Error cargando vehículos:', error);
+    showMessage('message', 'Error de conexión al cargar vehículos', false);
+    vehiculosContainer.innerHTML = '<p class="error">Error de conexión</p>';
+  }
+}
+
+// Mostrar vehículos en la tabla
+function mostrarVehiculos(vehiculos) {
+  if (vehiculos.length === 0) {
+    vehiculosContainer.innerHTML = '<p class="no-data">No hay vehículos registrados</p>';
+    return;
+  }
+
+  let html = `
+    <div class="tabla-responsive">
+      <table class="tabla-gestion">
+        <thead>
+          <tr>
+            <th>Matrícula</th>
+            <th>Cliente</th>
+            <th>Marca</th>
+            <th>Modelo</th>
+            <th>Año</th>
+            <th>Fecha Compra</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  vehiculos.forEach(vehiculo => {
+    // Mejorar la visualización del cliente
+    let nombreCliente;
+    if (vehiculo.nombre_cliente) {
+      nombreCliente = `${vehiculo.nombre_cliente} ${vehiculo.apellido_cliente || ''}`;
+    } else if (vehiculo.cedula_cliente) {
+      nombreCliente = `⚠️ ${vehiculo.cedula_cliente} (No registrado)`;
+    } else {
+      nombreCliente = '❌ Sin cliente';
+    }
+      
+    const fechaCompra = vehiculo.fecha_compra 
+      ? new Date(vehiculo.fecha_compra).toLocaleDateString('es-ES')
+      : 'N/A';
+    
+    html += `
+      <tr>
+        <td><strong>${vehiculo.matricula}</strong></td>
+        <td>${nombreCliente}</td>
+        <td>${vehiculo.marca || 'N/A'}</td>
+        <td>${vehiculo.modelo || 'N/A'}</td>
+        <td>${vehiculo.anio || 'N/A'}</td>
+        <td>${fechaCompra}</td>
+        <td class="acciones">
+          <button class="btn-editar" onclick="editarVehiculo('${vehiculo.matricula}')">✏️ Editar</button>
+          <button class="btn-eliminar" onclick="eliminarVehiculo('${vehiculo.matricula}')">🗑️ Eliminar</button>
+        </td>
+      </tr>
+    `;
+  });
+  
+  html += `
+        </tbody>
+      </table>
+    </div>
+    <div class="tabla-info">
+      <p>Total de vehículos: <strong>${vehiculos.length}</strong></p>
+    </div>
+  `;
+  
+  vehiculosContainer.innerHTML = html;
+}
+
+// Filtrar vehículos por búsqueda
+function filtrarVehiculos() {
+  const termino = busquedaInput.value.toLowerCase();
+  
+  if (!termino) {
+    mostrarVehiculos(vehiculosData);
+    return;
+  }
+  
+  const vehiculosFiltrados = vehiculosData.filter(vehiculo => {
+    const nombreCliente = `${vehiculo.nombre_cliente || ''} ${vehiculo.apellido_cliente || ''}`.toLowerCase();
+    return (
+      vehiculo.matricula.toLowerCase().includes(termino) ||
+      vehiculo.marca?.toLowerCase().includes(termino) ||
+      vehiculo.modelo?.toLowerCase().includes(termino) ||
+      vehiculo.cedula_cliente?.toLowerCase().includes(termino) ||
+      nombreCliente.includes(termino)
+    );
+  });
+  
+  mostrarVehiculos(vehiculosFiltrados);
+}
+
+// Abrir modal para nuevo vehículo
+function abrirModalNuevo() {
+  editandoVehiculo = null;
+  modalTitle.textContent = 'Nuevo Vehículo';
+  formVehiculo.reset();
+  document.getElementById('modalMatricula').readOnly = false;
+  modalVehiculo.style.display = 'block';
+}
+
+// Editar vehículo
+function editarVehiculo(matricula) {
+  const vehiculo = vehiculosData.find(v => v.matricula === matricula);
+  if (!vehiculo) return;
+  
+  editandoVehiculo = matricula;
+  modalTitle.textContent = 'Editar Vehículo';
+  
+  // Llenar el formulario
+  document.getElementById('modalMatricula').value = vehiculo.matricula;
+  document.getElementById('modalMatricula').readOnly = true;
+  document.getElementById('modalCedulaCliente').value = vehiculo.cedula_cliente || '';
+  document.getElementById('modalMarca').value = vehiculo.marca || '';
+  document.getElementById('modalModelo').value = vehiculo.modelo || '';
+  document.getElementById('modalAnio').value = vehiculo.anio || '';
+  
+  if (vehiculo.fecha_compra) {
+    const fecha = new Date(vehiculo.fecha_compra);
+    document.getElementById('modalFechaCompra').value = fecha.toISOString().split('T')[0];
+  }
+  
+  modalVehiculo.style.display = 'block';
+}
+
+// Eliminar vehículo
+function eliminarVehiculo(matricula) {
+  vehiculoAEliminar = matricula;
+  document.getElementById('vehiculoAEliminar').textContent = matricula;
+  modalConfirmar.style.display = 'block';
+}
+
+// Guardar vehículo (crear o actualizar)
+async function guardarVehiculo(event) {
+  event.preventDefault();
+  
+  const formData = new FormData(formVehiculo);
+  const vehiculoData = {
+    matricula: formData.get('matricula'),
+    cedulaCliente: formData.get('cedulaCliente'),
+    marca: formData.get('marca'),
+    modelo: formData.get('modelo'),
+    fechaCompra: formData.get('fechaCompra') || null,
+    anio: parseInt(formData.get('anio')) || null
+  };
+  
+  try {
+    let response;
+    if (editandoVehiculo) {
+      // Actualizar
+      response = await fetch(`/api/vehiculos/${editandoVehiculo}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vehiculoData)
+      });
+    } else {
+      // Crear nuevo
+      response = await fetch('/api/vehiculos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ciCliente: vehiculoData.cedulaCliente,
+          matricula: vehiculoData.matricula,
+          marca: vehiculoData.marca,
+          modelo: vehiculoData.modelo,
+          fechaCompra: vehiculoData.fechaCompra,
+          anio: vehiculoData.anio
+        })
+      });
+    }
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showMessage('message', data.message, true);
+      cerrarModal();
+      cargarVehiculos();
+    } else {
+      showMessage('message', data.message || 'Error al guardar vehículo', false);
+    }
+  } catch (error) {
+    console.error('Error guardando vehículo:', error);
+    showMessage('message', 'Error de conexión al guardar vehículo', false);
+  }
+}
+
+// Confirmar eliminación
+async function confirmarEliminacion() {
+  if (!vehiculoAEliminar) return;
+  
+  try {
+    const response = await fetch(`/api/vehiculos/${vehiculoAEliminar}`, {
+      method: 'DELETE'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showMessage('message', data.message, true);
+      cerrarModalConfirmar();
+      cargarVehiculos();
+    } else {
+      showMessage('message', data.message || 'Error al eliminar vehículo', false);
+    }
+  } catch (error) {
+    console.error('Error eliminando vehículo:', error);
+    showMessage('message', 'Error de conexión al eliminar vehículo', false);
+  }
+}
+
+// Cerrar modales
+function cerrarModal() {
+  modalVehiculo.style.display = 'none';
+  editandoVehiculo = null;
+  formVehiculo.reset();
+}
+
+function cerrarModalConfirmar() {
+  modalConfirmar.style.display = 'none';
+  vehiculoAEliminar = null;
+}
+
+// Mostrar estado de carga
+function mostrarCargando() {
+  vehiculosContainer.innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando vehículos...</p>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

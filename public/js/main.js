@@ -218,13 +218,53 @@ if (consultarReparacionForm) {
       const data = await response.json();
 
       if (data.success && data.data && data.data.length > 0) {
-        let html = '<h3>Resultados de la Consulta:</h3><ul>';
+        let html = '<h3>Resultados de la Consulta:</h3>';
+        html += '<div class="reparaciones-grid">';
         data.data.forEach(reparacion => {
-          html += `<li>ID Reparación: ${reparacion.id}, Matrícula: ${reparacion.matricula}, Fecha: ${reparacion.fecha_reparacion}, Observación: ${reparacion.observacion}, Precio: $${reparacion.precio}</li>`;
+          html += `
+            <div class="reparacion-card">
+              <div class="card-header">
+                <h4>🔧 Reparación #${reparacion.id_reparacion || 'N/A'}</h4>
+                <span class="sede-badge">Sede: ${data.sede || 'N/A'}</span>
+              </div>
+              <div class="card-body">
+                <div class="info-row">
+                  <span class="label">🚗 Matrícula:</span>
+                  <span class="value">${reparacion.matricula || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">📅 Fecha:</span>
+                  <span class="value">${reparacion.fecha ? new Date(reparacion.fecha).toLocaleDateString('es-ES') : 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">🔨 Tipo:</span>
+                  <span class="value">${reparacion.tipo || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">📝 Observaciones:</span>
+                  <span class="value">${reparacion.observaciones || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">💰 Precio:</span>
+                  <span class="value price">$${reparacion.precio ? parseFloat(reparacion.precio).toFixed(2) : '0.00'}</span>
+                </div>
+                ${reparacion.marca ? `
+                <div class="info-row">
+                  <span class="label">🏷️ Vehículo:</span>
+                  <span class="value">${reparacion.marca} ${reparacion.modelo || ''}</span>
+                </div>` : ''}
+                ${reparacion.nombre_cliente ? `
+                <div class="info-row">
+                  <span class="label">👤 Cliente:</span>
+                  <span class="value">${reparacion.nombre_cliente} ${reparacion.apellido_cliente || ''}</span>
+                </div>` : ''}
+              </div>
+            </div>
+          `;
         });
-        html += '</ul>';
+        html += '</div>';
         resultsDiv.innerHTML = html;
-        showMessage(messageElementId, data.message, true);
+        showMessage(messageElementId, `${data.data.length} reparación(es) encontrada(s) en ${data.sede}`, true);
       } else {
         resultsDiv.innerHTML = '<p>No se encontraron reparaciones o la búsqueda no arrojó resultados.</p>';
         showMessage(messageElementId, data.message || 'No se encontraron resultados.', false);

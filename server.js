@@ -1,202 +1,224 @@
 // server.js
 const express = require('express');
 const path = require('path');
-const sql = require('mssql'); // ¡Cambiado para SQL Server!
+const { initializeConnections, closeAllConnections } = require('./config/database');
+const apiRoutes = require('./routes/apiRoutes');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware para procesar datos JSON y de formularios enviados desde el frontend
-app.use(express.json()); // Para requests con body en JSON
-app.use(express.urlencoded({ extended: true })); // Para datos de formularios URL-encoded
+// --- CONFIGURACIÓN DE MIDDLEWARE ---
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// --- Configuración de Conexión a la Base de Datos SQL Server ---
-// ¡IMPORTANTE! Aquí es donde tu amigo configurará los datos de la base de datos.
-// Por ahora, puedes dejarlo así. Cuando la BD esté lista, necesitará tus credenciales reales.
-const dbConfig = {
-    user: 'your_db_user',        // Usuario de SQL Server (ej. 'sa' o un usuario específico)
-    password: 'your_db_password',// Contraseña del usuario
-    server: 'your_db_host',      // IP o nombre del servidor SQL Server (ej. 'localhost' o 'DESKTOP-XXXXXX')
-    database: 'your_db_name',    // Nombre de tu base de datos (ej. 'PoliCarDB')
-    options: {
-        encrypt: false,          // Para Azure SQL Database (true), para local SQL Server (false)
-        trustServerCertificate: true // Cambia a false en producción si tienes un certificado SSL válido
-    }
-};
+// Middleware para CORS (si necesitas acceso desde otros dominios)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
-// Mensaje de prueba de conexión a la BD al iniciar el servidor
-sql.connect(dbConfig)
-    .then(pool => {
-        if (pool.connected) {
-            console.log('Conectado exitosamente a la base de datos SQL Server (o al menos intentándolo...).');
-            // Puedes cerrar la conexión de prueba si quieres, pero 'mssql' maneja el pool internamente
-            // pool.close();
-        }
-    })
-    .catch(err => {
-        console.error('Error al conectar con la base de datos SQL Server:', err.message);
-        console.error('Asegúrate de que SQL Server esté corriendo y las credenciales sean correctas.');
-        console.error('No te preocupes si no está conectada todavía, tu amigo la conectará luego.');
-    });
+// Middleware para logging básico
+app.use((req, res, next) => {
+  if (!req.url.includes('/api/')) {
+    console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.url}`);
+  }
+  next();
+});
 
-// Sirve los archivos estáticos de tu Frontend desde la carpeta 'public'
+// --- SERVIR ARCHIVOS ESTÁTICOS DEL FRONTEND ---
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- Rutas de API para interactuar con la Base de Datos ---
-// Estas rutas simularán la interacción con la BD por ahora, y luego se conectarán realmente.
+// --- RUTAS DE LA API ---
+app.use('/api', apiRoutes);
 
-// 1. Ruta de Login (simulada para la selección de sede)
-app.post('/api/login', (req, res) => {
-    const { sede } = req.body;
-    console.log(`Intento de login en sede: ${sede}`); // Para ver en la consola del servidor
-    if (sede === 'Sur' || sede === 'Norte') { // Validación básica
-        res.json({ success: true, message: `Bienvenido a POLI-CAR Sede ${sede}` });
-    } else {
-        res.status(400).json({ success: false, message: 'Sede inválida. Por favor, elige Sur o Norte.' });
+// --- RUTAS DEL FRONTEND ---
+// Ruta principal
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Rutas específicas para cada página
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/registrar-vehiculo', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'registrarVehiculo.html'));
+});
+
+app.get('/registrar-empleado', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'registrarEmpleado.html'));
+});
+
+app.get('/registrar-reparacion', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'registrarReparacion.html'));
+});
+
+app.get('/registrar-repuesto', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'registrarRepuesto.html'));
+});
+
+app.get('/consultar-reparacion', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'consultarReparacion.html'));
+});
+
+// --- MANEJO DE ERRORES ---
+// Middleware para rutas no encontradas
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Ruta no encontrada: ${req.method} ${req.url}`,
+    availableRoutes: {
+      api: [
+        'POST /api/login',
+        'POST /api/vehiculos',
+        'POST /api/empleados', 
+        'POST /api/repuestos',
+        'POST /api/reparaciones',
+        'GET /api/consultar-reparacion',
+        'GET /api/health',
+        'GET /api/estadisticas',
+        'POST /api/cambiar-sede'
+      ],
+      pages: [
+        'GET /',
+        'GET /dashboard',
+        'GET /registrar-vehiculo',
+        'GET /registrar-empleado',
+        'GET /registrar-reparacion',
+        'GET /registrar-repuesto',
+        'GET /consultar-reparacion'
+      ]
     }
+  });
 });
 
-// 2. Ruta para Registrar Vehículo
-app.post('/api/vehiculos', async (req, res) => {
-    const { ciCliente, matricula, marca, modelo } = req.body;
-    console.log('Datos de Vehículo recibidos:', { ciCliente, matricula, marca, modelo });
-    try {
-        const pool = await sql.connect(dbConfig); // Abre una conexión desde el pool
-        const request = pool.request();
-        // Ejemplo de inserción real en SQL Server (descomenta y adapta cuando la BD esté lista)
-        /*
-        request.input('ciCliente', sql.VarChar, ciCliente);
-        request.input('matricula', sql.VarChar, matricula);
-        request.input('marca', sql.VarChar, marca);
-        request.input('modelo', sql.VarChar, modelo);
-        const result = await request.query(
-            'INSERT INTO Vehiculos (CI_Cliente, Matricula, Marca, Modelo) VALUES (@ciCliente, @matricula, @marca, @modelo); SELECT * FROM Vehiculos WHERE Matricula = @matricula;'
-        );
-        */
-        res.status(201).json({ success: true, message: 'Vehículo registrado (simulado).' /*, data: result.recordset[0] */ });
-    } catch (error) {
-        console.error('Error al registrar vehículo (en server):', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor al registrar vehículo.' });
+// Middleware global para manejo de errores
+app.use((error, req, res, next) => {
+  console.error('❌ Error no manejado:', error);
+  
+  res.status(500).json({
+    success: false,
+    message: 'Error interno del servidor',
+    error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
+  });
+});
+
+// --- FUNCIONES DE INICIO Y CIERRE ---
+async function startServer() {
+  try {
+    console.log('🚀 Iniciando servidor POLI-CAR...');
+    console.log('📊 Sistema de Base de Datos Distribuida');
+    console.log('🏢 Soporta fragmentación por sedes (Sur/Norte)');
+    console.log('🔄 Incluye replicación y tolerancia a fallos');
+    console.log('=' * 50);
+
+    // Inicializar conexiones a todas las bases de datos
+    await initializeConnections();
+
+    // Obtener todas las IPs disponibles del servidor
+    const { networkInterfaces } = require('os');
+    const nets = networkInterfaces();
+    let localIP = 'localhost';
+    const allIPs = [];
+    
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          allIPs.push({ adapter: name, ip: net.address });
+          if (localIP === 'localhost') {
+            localIP = net.address; // Primera IP encontrada como principal
+          }
+        }
+      }
     }
+
+    // Iniciar el servidor HTTP en todas las interfaces (0.0.0.0)
+    const server = app.listen(port, '0.0.0.0', () => {
+      console.log('');
+      console.log('✅ Servidor POLI-CAR iniciado exitosamente!');
+      console.log(`🌐 URL Local: http://localhost:${port}`);
+      console.log(`🌍 URL Red Principal: http://${localIP}:${port}`);
+      console.log('');
+      console.log('🔗 TODAS las IPs disponibles para conexión:');
+      allIPs.forEach(({ adapter, ip }) => {
+        console.log(`   • ${adapter}: http://${ip}:${port}`);
+      });
+      console.log(`📁 Frontend: ${path.join(__dirname, 'public')}`);
+      console.log('');
+      console.log('📋 Páginas disponibles (usa cualquier IP de arriba):');
+      console.log(`   • Principal: http://[IP]:${port}/`);
+      console.log(`   • Dashboard: http://[IP]:${port}/dashboard`);
+      console.log(`   • Gestionar Vehículos: http://[IP]:${port}/gestionarVehiculos.html`);
+      console.log(`   • Gestionar Empleados: http://[IP]:${port}/gestionarEmpleados.html`);
+      console.log(`   • Gestionar Reparaciones: http://[IP]:${port}/gestionarReparaciones.html`);
+      console.log(`   • Gestionar Repuestos: http://[IP]:${port}/gestionarRepuestos.html`);
+      console.log(`   • Consultar Reparación: http://[IP]:${port}/consultarReparacion.html`);
+      console.log('');
+      console.log('🔧 APIs disponibles:');
+      console.log(`   • Estado del sistema: http://[IP]:${port}/api/health`);
+      console.log(`   • Estadísticas: http://[IP]:${port}/api/estadisticas`);
+      console.log('');
+      console.log('💡 Para acceder desde otros PCs con VPN:');
+      console.log(`   1. Usa la IP del adaptador VPN de arriba`);
+      console.log(`   2. Configura firewall en ambos PCs`);
+      console.log('   3. Ambos PCs deben estar en la misma VPN');
+      console.log('   4. Todas las operaciones CRUD están disponibles');
+      console.log('=' * 50);
+    });
+
+    // Manejo de cierre graceful
+    const gracefulShutdown = async (signal) => {
+      console.log(`\n🛑 Recibida señal ${signal}. Cerrando servidor...`);
+      
+      server.close(async () => {
+        console.log('🔌 Servidor HTTP cerrado');
+        
+        try {
+          await closeAllConnections();
+          console.log('✅ Todas las conexiones de BD cerradas');
+          console.log('👋 Servidor POLI-CAR cerrado exitosamente');
+          process.exit(0);
+        } catch (error) {
+          console.error('❌ Error cerrando conexiones:', error);
+          process.exit(1);
+        }
+      });
+    };
+
+    // Eventos de cierre
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    return server;
+
+  } catch (error) {
+    console.error('❌ Error iniciando servidor:', error);
+    process.exit(1);
+  }
+}
+
+// --- MANEJO DE ERRORES NO CAPTURADOS ---
+process.on('uncaughtException', (error) => {
+  console.error('❌ Excepción no capturada:', error);
+  process.exit(1);
 });
 
-// 3. Ruta para Registrar Empleado
-app.post('/api/empleados', async (req, res) => {
-    const { id, nombre, cedula, fechaContratacion, salario } = req.body;
-    console.log('Datos de Empleado recibidos:', { id, nombre, cedula, fechaContratacion, salario });
-    try {
-        const pool = await sql.connect(dbConfig);
-        const request = pool.request();
-        // Ejemplo de inserción real en SQL Server (descomenta y adapta cuando la BD esté lista)
-        /*
-        request.input('id', sql.VarChar, id);
-        request.input('nombre', sql.VarChar, nombre);
-        request.input('cedula', sql.VarChar, cedula);
-        request.input('fechaContratacion', sql.Date, fechaContratacion);
-        request.input('salario', sql.Decimal(10, 2), salario);
-        const result = await request.query(
-            'INSERT INTO Empleados (ID, Nombre, Cedula, Fecha_Contratacion, Salario) VALUES (@id, @nombre, @cedula, @fechaContratacion, @salario); SELECT * FROM Empleados WHERE ID = @id;'
-        );
-        */
-        res.status(201).json({ success: true, message: 'Empleado registrado (simulado).' /*, data: result.recordset[0] */ });
-    } catch (error) {
-        console.error('Error al registrar empleado (en server):', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor al registrar empleado.' });
-    }
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promesa rechazada no manejada:', reason);
+  console.error('En la promesa:', promise);
+  process.exit(1);
 });
 
-// 4. Ruta para Registrar Reparación
-app.post('/api/reparaciones', async (req, res) => {
-    const { id, matricula, fechaReparacion, idRepuesto, observacion, precio } = req.body;
-    console.log('Datos de Reparación recibidos:', { id, matricula, fechaReparacion, idRepuesto, observacion, precio });
-    try {
-        const pool = await sql.connect(dbConfig);
-        const request = pool.request();
-        // Ejemplo de inserción real en SQL Server (descomenta y adapta cuando la BD esté lista)
-        /*
-        request.input('id', sql.VarChar, id);
-        request.input('matricula', sql.VarChar, matricula);
-        request.input('fechaReparacion', sql.Date, fechaReparacion);
-        request.input('idRepuesto', sql.VarChar, idRepuesto);
-        request.input('observacion', sql.VarChar, observacion);
-        request.input('precio', sql.Decimal(10, 2), precio);
-        const result = await request.query(
-            'INSERT INTO Reparaciones (ID, Matricula, Fecha_Reparacion, ID_Repuesto, Observacion, Precio) VALUES (@id, @matricula, @fechaReparacion, @idRepuesto, @observacion, @precio); SELECT * FROM Reparaciones WHERE ID = @id;'
-        );
-        */
-        res.status(201).json({ success: true, message: 'Reparación registrada (simulada).' /*, data: result.recordset[0] */ });
-    } catch (error) {
-        console.error('Error al registrar reparación (en server):', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor al registrar reparación.' });
-    }
-});
+// --- INICIAR EL SERVIDOR ---
+if (require.main === module) {
+  startServer();
+}
 
-// 5. Ruta para Registrar Repuesto
-app.post('/api/repuestos', async (req, res) => {
-    const { idRepuesto, descripcionRepuesto, cantidadRepuesto } = req.body;
-    console.log('Datos de Repuesto recibidos:', { idRepuesto, descripcionRepuesto, cantidadRepuesto });
-    try {
-        const pool = await sql.connect(dbConfig);
-        const request = pool.request();
-        // Ejemplo de inserción real en SQL Server (descomenta y adapta cuando la BD esté lista)
-        /*
-        request.input('idRepuesto', sql.VarChar, idRepuesto);
-        request.input('descripcionRepuesto', sql.VarChar, descripcionRepuesto);
-        request.input('cantidadRepuesto', sql.Int, cantidadRepuesto);
-        const result = await request.query(
-            'INSERT INTO Repuestos (ID_Repuesto, Descripcion, Cantidad) VALUES (@idRepuesto, @descripcionRepuesto, @cantidadRepuesto); SELECT * FROM Repuestos WHERE ID_Repuesto = @idRepuesto;'
-        );
-        */
-        res.status(201).json({ success: true, message: 'Repuesto registrado (simulado).' /*, data: result.recordset[0] */ });
-    } catch (error) {
-        console.error('Error al registrar repuesto (en server):', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor al registrar repuesto.' });
-    }
-});
-
-// 6. Ruta para Consultar Reparación (simulada)
-app.get('/api/consultar-reparacion', async (req, res) => {
-    const { ci, matricula } = req.query; // Puedes consultar por CI o Matrícula
-    console.log('Solicitud de consulta de reparación recibida:', { ci, matricula });
-    try {
-        // En un futuro, aquí irá la consulta SQL real para buscar en la BD
-        // const pool = await sql.connect(dbConfig);
-        // const request = pool.request();
-        // let query = 'SELECT * FROM Reparaciones r JOIN Vehiculos v ON r.Matricula = v.Matricula JOIN Clientes c ON v.CI_Cliente = c.CI WHERE 1=1';
-        // if (ci) {
-        //     query += ' AND c.CI = @ci';
-        //     request.input('ci', sql.VarChar, ci);
-        // }
-        // if (matricula) {
-        //     query += ' AND v.Matricula = @matricula';
-        //     request.input('matricula', sql.VarChar, matricula);
-        // }
-        // const result = await request.query(query);
-
-        // Datos de ejemplo para simular una búsqueda si la BD no está conectada
-        const dummyData = [
-            { id: 'REP001', matricula: 'ABC-123', fecha_reparacion: '2025-07-20', id_repuesto: 'PART001', observacion: 'Cambio de aceite y filtro.', precio: 50.00 },
-            { id: 'REP002', matricula: 'DEF-456', fecha_reparacion: '2025-07-22', id_repuesto: 'PART002', observacion: 'Revisión de frenos.', precio: 75.50 }
-        ];
-
-        // Filtra los datos dummy para simular una búsqueda
-        const filteredData = dummyData.filter(item => {
-            let match = true;
-            if (ci && !item.matricula.includes(ci)) match = false; // Simulación: si hay CI, busca en matrícula
-            if (matricula && item.matricula !== matricula) match = false;
-            return match;
-        });
-
-        res.json({ success: true, data: filteredData, message: 'Consulta de reparación exitosa (simulada).' });
-    } catch (error) {
-        console.error('Error al consultar reparación (en server):', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor al consultar reparación.' });
-    }
-});
-
-// Iniciar el servidor
-app.listen(port, () => {
-    console.log(`Servidor de POLI-CAR escuchando en http://localhost:${port}`);
-    console.log(`Archivos del frontend servidos desde: ${path.join(__dirname, 'public')}`);
-    console.log('¡Listo para que pruebes los formularios!');
-});
+module.exports = app;

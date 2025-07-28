@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POLI-CAR - Gestionar Reparaciones</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+  <h1>POLI-CAR</h1>
+  <h2>🔧 Gestionar Reparaciones</h2>
+  
+  <!-- Controles superiores -->
+  <div class="controles-superiores">
+    <div class="busqueda-container">
+      <input type="text" id="busquedaReparaciones" placeholder="🔍 Buscar por matrícula, empleado, descripción...">
+    </div>
+    <div class="acciones-container">
+      <button id="btnNuevaReparacion" class="btn-nuevo">➕ Nueva Reparación</button>
+      <button id="btnRefrescar" class="btn-refrescar">🔄 Refrescar</button>
+    </div>
+  </div>
+
+  <!-- Mensaje de estado -->
+  <p id="message"></p>
+
+  <!-- Tabla de reparaciones -->
+  <div id="reparacionesContainer">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando reparaciones...</p>
+    </div>
+  </div>
+
+  <!-- Modal para editar/crear reparación -->
+  <div id="modalReparacion" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3 id="modalTitle">Editar Reparación</h3>
+        <span class="close">&times;</span>
+      </div>
+      <form id="formReparacion">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="modalMatricula">Matrícula del Vehículo:</label>
+            <input type="text" id="modalMatricula" name="matricula" required>
+            <div id="sugerenciasVehiculos" class="sugerencias"></div>
+          </div>
+          <div class="form-group">
+            <label for="modalIdTaller">ID Taller:</label>
+            <input type="number" id="modalIdTaller" name="idTaller" required>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="modalFechaInicio">Fecha de la Reparación:</label>
+            <input type="date" id="modalFechaInicio" name="fechaInicio" required>
+          </div>
+          <div class="form-group">
+            <label for="modalAnio">Año:</label>
+            <input type="number" id="modalAnio" name="anio" min="1900" max="2030">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="modalDescripcion">Tipo de Reparación:</label>
+          <input type="text" id="modalDescripcion" name="descripcion" required placeholder="Ej: Cambio de aceite, Reparación de frenos...">
+        </div>
+        
+        <div class="form-group">
+          <label for="modalObservaciones">Observaciones:</label>
+          <textarea id="modalObservaciones" name="observaciones" rows="3" placeholder="Observaciones adicionales..."></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="modalPrecio">Precio Total:</label>
+          <input type="number" id="modalPrecio" name="precio" min="0" step="0.01" required>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
+          <button type="submit" id="btnGuardar" class="btn-guardar">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación para eliminar -->
+  <div id="modalConfirmar" class="modal">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3>Confirmar Eliminación</h3>
+        <span class="close-confirm">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p>¿Está seguro que desea eliminar la reparación de la matrícula <strong id="reparacionAEliminar"></strong>?</p>
+        <p class="warning">⚠️ Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btnCancelarEliminar" class="btn-cancelar">Cancelar</button>
+        <button type="button" id="btnConfirmarEliminar" class="btn-eliminar">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-links">
+    <a href="dashboard.html">🏠 Volver al Dashboard</a>
+  </div>
+</div>
+
+<script src="js/main.js"></script>
+<script>
+// Variables globales
+let reparacionesData = [];
+let vehiculosData = [];
+let editandoReparacion = null;
+let reparacionAEliminar = null;
+
+// Elementos del DOM
+const reparacionesContainer = document.getElementById('reparacionesContainer');
+const busquedaInput = document.getElementById('busquedaReparaciones');
+const btnNuevaReparacion = document.getElementById('btnNuevaReparacion');
+const btnRefrescar = document.getElementById('btnRefrescar');
+const modalReparacion = document.getElementById('modalReparacion');
+const modalConfirmar = document.getElementById('modalConfirmar');
+const formReparacion = document.getElementById('formReparacion');
+const modalTitle = document.getElementById('modalTitle');
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
+  cargarDatos();
+  
+  // Búsqueda en tiempo real
+  busquedaInput.addEventListener('input', filtrarReparaciones);
+  
+  // Botones principales
+  btnNuevaReparacion.addEventListener('click', abrirModalNueva);
+  btnRefrescar.addEventListener('click', cargarDatos);
+  
+  // Modal eventos
+  document.querySelector('.close').addEventListener('click', cerrarModal);
+  document.querySelector('.close-confirm').addEventListener('click', cerrarModalConfirmar);
+  document.getElementById('btnCancelar').addEventListener('click', cerrarModal);
+  document.getElementById('btnCancelarEliminar').addEventListener('click', cerrarModalConfirmar);
+  
+  // Form submit
+  formReparacion.addEventListener('submit', guardarReparacion);
+  
+  // Confirmar eliminación
+  document.getElementById('btnConfirmarEliminar').addEventListener('click', confirmarEliminacion);
+  
+  // Autocompletar vehículos
+  document.getElementById('modalMatricula').addEventListener('input', mostrarSugerenciasVehiculos);
+  
+  // Cerrar modal al hacer click fuera
+  window.addEventListener('click', (event) => {
+    if (event.target === modalReparacion) cerrarModal();
+    if (event.target === modalConfirmar) cerrarModalConfirmar();
+  });
+});
+
+// Cargar todos los datos necesarios
+async function cargarDatos() {
+  await Promise.all([
+    cargarReparaciones(),
+    cargarVehiculos()
+  ]);
+}
+
+// Cargar reparaciones
+async function cargarReparaciones() {
+  try {
+    mostrarCargando();
+    const response = await fetch('/api/reparaciones');
+    const data = await response.json();
+    
+    if (data.success) {
+      reparacionesData = data.data;
+      mostrarReparaciones(reparacionesData);
+      showMessage('message', data.message, true);
+    } else {
+      showMessage('message', data.message || 'Error al cargar reparaciones', false);
+      reparacionesContainer.innerHTML = '<p class="error">Error al cargar reparaciones</p>';
+    }
+  } catch (error) {
+    console.error('Error cargando reparaciones:', error);
+    showMessage('message', 'Error de conexión al cargar reparaciones', false);
+    reparacionesContainer.innerHTML = '<p class="error">Error de conexión</p>';
+  }
+}
+
+// Cargar vehículos para autocompletar
+async function cargarVehiculos() {
+  try {
+    const response = await fetch('/api/vehiculos');
+    const data = await response.json();
+    if (data.success) {
+      vehiculosData = data.data;
+    }
+  } catch (error) {
+    console.error('Error cargando vehículos:', error);
+  }
+}
+
+// Mostrar reparaciones en la tabla
+function mostrarReparaciones(reparaciones) {
+  if (reparaciones.length === 0) {
+    reparacionesContainer.innerHTML = '<p class="no-data">No hay reparaciones registradas</p>';
+    return;
+  }
+
+  let html = `
+    <div class="tabla-responsive">
+      <table class="tabla-gestion">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Matrícula</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Observaciones</th>
+            <th>Precio</th>
+            <th>Taller</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  reparaciones.forEach(reparacion => {
+    const tipoCorto = reparacion.descripcion && reparacion.descripcion.length > 30 
+      ? reparacion.descripcion.substring(0, 30) + '...'
+      : reparacion.descripcion || 'N/A';
+      
+    const observacionesCortas = reparacion.observaciones && reparacion.observaciones.length > 25 
+      ? reparacion.observaciones.substring(0, 25) + '...'
+      : reparacion.observaciones || 'N/A';
+    
+    const fecha = reparacion.fecha_inicio ? new Date(reparacion.fecha_inicio).toLocaleDateString('es-CO') : 'N/A';
+    const precio = parseFloat(reparacion.costo_mano_obra || 0).toFixed(2);
+    
+    html += `
+      <tr>
+        <td><strong>${reparacion.id_reparacion || 'N/A'}</strong></td>
+        <td><strong>${reparacion.matricula}</strong></td>
+        <td>${fecha}</td>
+        <td title="${reparacion.descripcion || ''}">${tipoCorto}</td>
+        <td title="${reparacion.observaciones || ''}">${observacionesCortas}</td>
+        <td><strong>$${precio}</strong></td>
+        <td>${reparacion.id_empleado || 'N/A'}</td>
+        <td class="acciones">
+          <button class="btn-editar" onclick="editarReparacion('${reparacion.matricula}')">✏️ Editar</button>
+          <button class="btn-eliminar" onclick="eliminarReparacion('${reparacion.matricula}')">🗑️ Eliminar</button>
+        </td>
+      </tr>
+    `;
+  });
+  
+  html += `
+        </tbody>
+      </table>
+    </div>
+    <div class="tabla-info">
+      <p>Total de reparaciones: <strong>${reparaciones.length}</strong></p>
+    </div>
+  `;
+  
+  reparacionesContainer.innerHTML = html;
+}
+
+// Filtrar reparaciones por búsqueda
+function filtrarReparaciones() {
+  const termino = busquedaInput.value.toLowerCase();
+  
+  if (!termino) {
+    mostrarReparaciones(reparacionesData);
+    return;
+  }
+  
+  const reparacionesFiltradas = reparacionesData.filter(reparacion => {
+    return (
+      reparacion.matricula?.toLowerCase().includes(termino) ||
+      reparacion.id_empleado?.toString().includes(termino) ||
+      reparacion.descripcion?.toLowerCase().includes(termino)
+    );
+  });
+  
+  mostrarReparaciones(reparacionesFiltradas);
+}
+
+// Mostrar sugerencias de vehículos
+function mostrarSugerenciasVehiculos() {
+  const input = document.getElementById('modalMatricula');
+  const contenedor = document.getElementById('sugerenciasVehiculos');
+  const valor = input.value.toLowerCase();
+  
+  if (valor.length < 2) {
+    contenedor.innerHTML = '';
+    return;
+  }
+  
+  const sugerencias = vehiculosData.filter(vehiculo => 
+    vehiculo.matricula.toLowerCase().includes(valor)
+  ).slice(0, 5);
+  
+  if (sugerencias.length === 0) {
+    contenedor.innerHTML = '<div class="sugerencia">No hay vehículos que coincidan</div>';
+    return;
+  }
+  
+  let html = '';
+  sugerencias.forEach(vehiculo => {
+    html += `<div class="sugerencia" onclick="seleccionarVehiculo('${vehiculo.matricula}')">${vehiculo.matricula} - ${vehiculo.marca || 'N/A'} ${vehiculo.modelo || ''}</div>`;
+  });
+  
+  contenedor.innerHTML = html;
+}
+
+// Seleccionar vehículo de sugerencias
+function seleccionarVehiculo(matricula) {
+  document.getElementById('modalMatricula').value = matricula;
+  document.getElementById('sugerenciasVehiculos').innerHTML = '';
+}
+
+// Abrir modal para nueva reparación
+function abrirModalNueva() {
+  editandoReparacion = null;
+  modalTitle.textContent = 'Nueva Reparación';
+  formReparacion.reset();
+  
+  // Establecer fecha como hoy y año actual
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('modalFechaInicio').value = hoy;
+  document.getElementById('modalAnio').value = new Date().getFullYear();
+  
+  modalReparacion.style.display = 'block';
+}
+
+// Editar reparación
+function editarReparacion(matricula) {
+  const reparacion = reparacionesData.find(r => r.matricula === matricula);
+  if (!reparacion) return;
+  
+  editandoReparacion = matricula;
+  modalTitle.textContent = 'Editar Reparación';
+  
+  // Llenar el formulario
+  document.getElementById('modalMatricula').value = reparacion.matricula || '';
+  document.getElementById('modalIdTaller').value = reparacion.id_empleado || '';
+  
+  // Fecha
+  if (reparacion.fecha_inicio) {
+    document.getElementById('modalFechaInicio').value = new Date(reparacion.fecha_inicio).toISOString().split('T')[0];
+  }
+  
+  // Campos específicos de la tabla real
+  document.getElementById('modalDescripcion').value = reparacion.descripcion || '';
+  document.getElementById('modalObservaciones').value = reparacion.observaciones || '';
+  document.getElementById('modalPrecio').value = reparacion.costo_mano_obra || 0;
+  document.getElementById('modalAnio').value = reparacion.anio || new Date().getFullYear();
+  
+  modalReparacion.style.display = 'block';
+}
+
+// Eliminar reparación
+function eliminarReparacion(matricula) {
+  reparacionAEliminar = matricula;
+  document.getElementById('reparacionAEliminar').textContent = matricula;
+  modalConfirmar.style.display = 'block';
+}
+
+// Guardar reparación (crear o actualizar)
+async function guardarReparacion(event) {
+  event.preventDefault();
+  
+  const formData = new FormData(formReparacion);
+  const reparacionData = {
+    matricula: formData.get('matricula'),
+    idTaller: parseInt(formData.get('idTaller')),
+    fecha: formData.get('fechaInicio'),
+    tipo: formData.get('descripcion'),
+    observaciones: formData.get('observaciones'),
+    precio: parseFloat(formData.get('precio')),
+    anio: parseInt(formData.get('anio'))
+  };
+  
+  try {
+    let response;
+    if (editandoReparacion) {
+      // Actualizar
+      response = await fetch(`/api/reparaciones/${editandoReparacion}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reparacionData)
+      });
+    } else {
+      // Crear nueva
+      response = await fetch('/api/reparaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reparacionData)
+      });
+    }
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showMessage('message', data.message, true);
+      cerrarModal();
+      cargarReparaciones();
+    } else {
+      showMessage('message', data.message || 'Error al guardar reparación', false);
+    }
+  } catch (error) {
+    console.error('Error guardando reparación:', error);
+    showMessage('message', 'Error de conexión al guardar reparación', false);
+  }
+}
+
+// Confirmar eliminación
+async function confirmarEliminacion() {
+  if (!reparacionAEliminar) return;
+  
+  try {
+    const response = await fetch(`/api/reparaciones/${reparacionAEliminar}`, {
+      method: 'DELETE'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      showMessage('message', data.message, true);
+      cerrarModalConfirmar();
+      cargarReparaciones();
+    } else {
+      showMessage('message', data.message || 'Error al eliminar reparación', false);
+    }
+  } catch (error) {
+    console.error('Error eliminando reparación:', error);
+    showMessage('message', 'Error de conexión al eliminar reparación', false);
+  }
+}
+
+// Cerrar modales
+function cerrarModal() {
+  modalReparacion.style.display = 'none';
+  editandoReparacion = null;
+  formReparacion.reset();
+  document.getElementById('sugerenciasVehiculos').innerHTML = '';
+}
+
+function cerrarModalConfirmar() {
+  modalConfirmar.style.display = 'none';
+  reparacionAEliminar = null;
+}
+
+// Mostrar estado de carga
+function mostrarCargando() {
+  reparacionesContainer.innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando reparaciones...</p>
+    </div>
+  `;
+}
+</script>
+
+<style>
+.modal-large {
+  max-width: 800px;
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.sugerencias {
+  position: absolute;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 1000;
+  width: 100%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.sugerencia {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.sugerencia:hover {
+  background-color: #f5f5f5;
+}
+
+.sugerencia:last-child {
+  border-bottom: none;
+}
+
+.form-group {
+  position: relative;
+}
+
+#costoTotal {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #28a745;
+}
+</style>
+</body>
+</html>
