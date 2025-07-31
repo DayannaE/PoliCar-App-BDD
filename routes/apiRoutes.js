@@ -53,6 +53,333 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// =====================================================
+// --- ENDPOINT DE PRUEBA ---
+router.get('/test', (req, res) => {
+  console.log('🧪 Test endpoint llamado');
+  res.json({ 
+    success: true, 
+    message: 'API funcionando correctamente',
+    timestamp: new Date().toISOString(),
+    endpoints_disponibles: [
+      'GET /api/test',
+      'GET /api/diagnostico/vistas-particionadas',
+      'GET /api/diagnostico/estructura-tablas',
+      'GET /api/estadisticas-globales',
+      'GET /api/fragmentacion-vertical',
+      'GET /api/vehiculos/global',
+      'GET /api/estadisticas/global',
+      'GET /api/reparaciones/global',
+      'GET /api/reporte/consolidado'
+    ]
+  });
+});
+
+// --- ENDPOINT PARA DIAGNÓSTICO DE VISTAS PARTICIONADAS ---
+router.get('/diagnostico/vistas-particionadas', async (req, res) => {
+  try {
+    console.log('🔍 Realizando diagnóstico de vistas particionadas...');
+    const resultado = await dataService.diagnosticarVistasParticionadas();
+    res.json(resultado);
+  } catch (error) {
+    console.error('❌ Error en diagnóstico:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error realizando diagnóstico',
+      error: error.message
+    });
+  }
+});
+
+// --- ENDPOINT PARA ESTADÍSTICAS GLOBALES CON FALLBACK ---
+router.get('/estadisticas-globales', async (req, res) => {
+  try {
+    console.log('📊 Obteniendo estadísticas globales...');
+    const resultado = await dataService.obtenerEstadisticasGlobales();
+    res.json(resultado);
+  } catch (error) {
+    console.error('❌ Error obteniendo estadísticas globales:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo estadísticas globales',
+      error: error.message
+    });
+  }
+});
+
+// --- ENDPOINT PARA DEMOSTRAR FRAGMENTACIÓN VERTICAL ---
+router.get('/fragmentacion-vertical', async (req, res) => {
+  try {
+    console.log('🧩 Demostrando fragmentación vertical...');
+    const resultado = await dataService.demostrarFragmentacionVertical();
+    res.json(resultado);
+  } catch (error) {
+    console.error('❌ Error demostrando fragmentación vertical:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error demostrando fragmentación vertical',
+      error: error.message
+    });
+  }
+});
+
+// --- ENDPOINT PARA VERIFICAR ESTRUCTURA DE TABLAS ---
+router.get('/diagnostico/estructura-tablas', async (req, res) => {
+  try {
+    console.log('🔍 Verificando estructura de tablas...');
+    const estructura = await dataService.verificarEstructuraTablas();
+    res.json({
+      success: true,
+      estructura: estructura,
+      message: 'Estructura de tablas verificada'
+    });
+  } catch (error) {
+    console.error('❌ Error verificando estructura:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error verificando estructura de tablas',
+      error: error.message
+    });
+  }
+});
+
+// --- RUTAS DE CLIENTES ---
+// =====================================================
+
+// REGISTRAR CLIENTE
+router.post('/clientes', async (req, res) => {
+  try {
+    const { cedula, nombre, apellido, zona, telefono, email } = req.body;
+    
+    // Validaciones básicas
+    if (!cedula || !nombre || !apellido || !zona) {
+      return res.status(400).json({
+        success: false,
+        message: 'Los campos cédula, nombre, apellido y zona son obligatorios.'
+      });
+    }
+
+    if (zona !== 'Sur' && zona !== 'Norte') {
+      return res.status(400).json({
+        success: false,
+        message: 'La zona debe ser "Sur" o "Norte".'
+      });
+    }
+
+    const resultado = await dataService.registrarCliente({
+      cedula, nombre, apellido, zona, telefono, email
+    });
+
+    res.status(201).json(resultado);
+
+  } catch (error) {
+    console.error('Error registrando cliente:', error);
+    
+    if (error.message.includes('ya está registrado')) {
+      res.status(409).json({
+        success: false,
+        message: error.message
+      });
+    } else if (error.message.includes('no disponible')) {
+      res.status(503).json({
+        success: false,
+        message: 'Servicio de base de datos temporalmente no disponible. Intenta más tarde.'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al registrar cliente.'
+      });
+    }
+  }
+});
+
+// ENDPOINT DE PRUEBA PARA DIAGNÓSTICO
+router.get('/test-dataservice', async (req, res) => {
+  try {
+    console.log('🧪 Endpoint de prueba - verificando dataService...');
+    console.log('📋 Métodos disponibles:', Object.getOwnPropertyNames(dataService).filter(name => typeof dataService[name] === 'function'));
+    
+    res.json({
+      success: true,
+      message: 'dataService funciona correctamente',
+      metodos_disponibles: Object.getOwnPropertyNames(dataService).filter(name => typeof dataService[name] === 'function'),
+      tiene_listarClientes: typeof dataService.listarClientes === 'function',
+      tiene_getConnectionPool: typeof dataService.getConnectionPool !== 'undefined'
+    });
+  } catch (error) {
+    console.error('❌ Error en test-dataservice:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error en dataService',
+      error: error.message
+    });
+  }
+});
+
+// LISTAR CLIENTES
+router.get('/clientes', async (req, res) => {
+  try {
+    console.log('🔄 Iniciando petición para listar clientes...');
+    
+    // Verificación adicional
+    if (typeof dataService.listarClientes !== 'function') {
+      throw new Error('dataService.listarClientes no es una función');
+    }
+    
+    const resultado = await dataService.listarClientes();
+    console.log('✅ Clientes obtenidos exitosamente:', resultado.data?.length || 0);
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('❌ Error listando clientes:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: `Error al obtener la lista de clientes: ${error.message}`,
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      debug_info: {
+        dataService_type: typeof dataService,
+        listarClientes_type: typeof dataService.listarClientes,
+        available_methods: Object.getOwnPropertyNames(dataService).filter(name => typeof dataService[name] === 'function')
+      }
+    });
+  }
+});
+
+// BUSCAR CLIENTE POR CÉDULA
+router.get('/clientes/:cedula', async (req, res) => {
+  try {
+    const { cedula } = req.params;
+    
+    if (!cedula) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cédula es requerida.'
+      });
+    }
+
+    // Primero buscar si existe en cualquier sede
+    const clienteExiste = await dataService.validarClienteExiste(cedula);
+    
+    if (!clienteExiste) {
+      return res.status(404).json({
+        success: false,
+        message: `Cliente con cédula ${cedula} no encontrado.`
+      });
+    }
+
+    res.json({
+      success: true,
+      data: clienteExiste,
+      message: 'Cliente encontrado'
+    });
+
+  } catch (error) {
+    console.error('Error buscando cliente:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al buscar cliente.'
+    });
+  }
+});
+
+// OBTENER DETALLES COMPLETOS DEL CLIENTE
+router.get('/clientes/:cedula/detalles', async (req, res) => {
+  try {
+    const { cedula } = req.params;
+    
+    const resultado = await dataService.consultarClientePorCedula(cedula);
+    
+    if (!resultado.success) {
+      return res.status(404).json(resultado);
+    }
+
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('Error obteniendo detalles del cliente:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener detalles del cliente.'
+    });
+  }
+});
+
+// ACTUALIZAR CLIENTE
+router.put('/clientes/:cedula', async (req, res) => {
+  try {
+    const { cedula } = req.params;
+    const { nombre, apellido, zona, telefono, email } = req.body;
+    
+    // Validaciones básicas
+    if (!nombre || !apellido || !zona) {
+      return res.status(400).json({
+        success: false,
+        message: 'Los campos nombre, apellido y zona son obligatorios.'
+      });
+    }
+
+    if (zona !== 'Sur' && zona !== 'Norte') {
+      return res.status(400).json({
+        success: false,
+        message: 'La zona debe ser "Sur" o "Norte".'
+      });
+    }
+
+    const resultado = await dataService.actualizarCliente(cedula, {
+      nombre, apellido, zona, telefono, email
+    });
+
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('Error actualizando cliente:', error);
+    
+    if (error.message.includes('no encontrado')) {
+      res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al actualizar cliente.'
+      });
+    }
+  }
+});
+
+// ELIMINAR CLIENTE
+router.delete('/clientes/:cedula', async (req, res) => {
+  try {
+    const { cedula } = req.params;
+    
+    const resultado = await dataService.eliminarCliente(cedula);
+    res.json(resultado);
+
+  } catch (error) {
+    console.error('Error eliminando cliente:', error);
+    
+    if (error.message.includes('no encontrado')) {
+      res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    } else if (error.message.includes('no se puede eliminar')) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al eliminar cliente.'
+      });
+    }
+  }
+});
+
 // --- RUTAS DE VEHÍCULOS ---
 router.post('/vehiculos', async (req, res) => {
   try {
@@ -67,7 +394,10 @@ router.post('/vehiculos', async (req, res) => {
     }
 
     const resultado = await dataService.registrarVehiculo({
-      ciCliente, matricula, marca, modelo
+      cedulaCliente: ciCliente, 
+      matricula, 
+      marca, 
+      modelo
     });
 
     res.status(201).json(resultado);
@@ -191,12 +521,14 @@ router.post('/repuestos', async (req, res) => {
 // --- RUTAS DE REPARACIONES ---
 router.post('/reparaciones', async (req, res) => {
   try {
-    const { id, matricula, fechaReparacion, idRepuesto, observacion, precio } = req.body;
+    console.log('🔧 Datos recibidos para reparación:', req.body);
     
-    if (!id || !matricula || !fechaReparacion || !idRepuesto || !precio) {
+    const { id, matricula, fechaReparacion, tipo, observacion, precio, idTaller } = req.body;
+    
+    if (!id || !matricula || !fechaReparacion || !precio) {
       return res.status(400).json({
         success: false,
-        message: 'Los campos ID, Matrícula, Fecha, ID Repuesto y Precio son obligatorios.'
+        message: 'Los campos ID, Matrícula, Fecha y Precio son obligatorios.'
       });
     }
 
@@ -207,17 +539,29 @@ router.post('/reparaciones', async (req, res) => {
       });
     }
 
+    // Mapear correctamente los parámetros esperados por dataService.registrarReparacion
     const resultado = await dataService.registrarReparacion({
-      id, matricula, fechaReparacion, idRepuesto, 
-      observacion: observacion || '', precio: parseFloat(precio)
+      idReparacion: parseInt(id),
+      matricula: matricula,
+      fecha: new Date(fechaReparacion),
+      tipo: tipo || 'Reparación General',
+      observaciones: observacion || '',
+      anio: new Date().getFullYear(),
+      precio: parseFloat(precio),
+      idTaller: parseInt(idTaller) || 1
     });
 
     res.status(201).json(resultado);
 
   } catch (error) {
-    console.error('Error registrando reparación:', error);
+    console.error('❌ Error registrando reparación:', error);
     
-    if (error.message.includes('no disponible')) {
+    if (error.message.includes('no está registrado')) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    } else if (error.message.includes('no disponible')) {
       res.status(503).json({
         success: false,
         message: 'Nodo de base de datos temporalmente no disponible.'
@@ -230,7 +574,7 @@ router.post('/reparaciones', async (req, res) => {
     } else if (error.message.includes('FOREIGN KEY')) {
       res.status(400).json({
         success: false,
-        message: 'La matrícula del vehículo o ID del repuesto no existen en el sistema.'
+        message: 'La matrícula del vehículo no existe en el sistema.'
       });
     } else {
       res.status(500).json({
@@ -372,12 +716,9 @@ router.get('/vehiculos/global', async (req, res) => {
 // Obtener estadísticas de ambas sedes
 router.get('/estadisticas/global', async (req, res) => {
   try {
-    const estadisticas = await dataService.obtenerEstadisticasGlobales();
-    res.json({
-      success: true,
-      data: estadisticas,
-      message: 'Estadísticas globales obtenidas exitosamente'
-    });
+    const resultado = await dataService.obtenerEstadisticasGlobales();
+    // obtenerEstadisticasGlobales ya devuelve un objeto con success, data, etc.
+    res.json(resultado);
   } catch (error) {
     console.error('Error obteniendo estadísticas globales:', error);
     res.status(500).json({
@@ -643,44 +984,9 @@ router.delete('/reparaciones/:id', async (req, res) => {
   }
 });
 
-// --- CLIENTES ---
-// Listar todos los clientes
-router.get('/clientes', async (req, res) => {
-  try {
-    // Obtener clientes desde el nodo actual
-    const pool = dataService.getConnectionPool(dataService.currentSede);
-    if (!pool) {
-      return res.status(500).json({
-        success: false,
-        message: 'No hay conexión disponible'
-      });
-    }
-
-    const request = pool.request();
-    const result = await request.query(`
-      SELECT cedula, nombre, apellido, zona 
-      FROM Cliente 
-      ORDER BY nombre, apellido
-    `);
-
-    res.json({
-      success: true,
-      data: result.recordset,
-      message: `${result.recordset.length} clientes encontrados en nodo ${dataService.currentSede}`
-    });
-  } catch (error) {
-    console.error('❌ Error listando clientes:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al listar clientes',
-      error: error.message
-    });
-  }
-});
-
 // ===== NUEVAS RUTAS DE CONSULTA DE CLIENTES =====
 
-// LISTAR TODOS LOS CLIENTES CON ESTADÍSTICAS
+// LISTAR TODOS LOS CLIENTES CON ESTADÍSTICAS (endpoint alternativo)
 router.get('/clientes-completo', async (req, res) => {
   try {
     const resultado = await dataService.listarClientes();
@@ -695,22 +1001,47 @@ router.get('/clientes-completo', async (req, res) => {
   }
 });
 
-// CONSULTAR CLIENTE POR CÉDULA CON DETALLES
-router.get('/clientes/:cedula', async (req, res) => {
+// ===== ENDPOINTS DE CONSULTAS GLOBALES CON RESPALDO =====
+router.get('/estadisticas-globales', async (req, res) => {
   try {
-    const { cedula } = req.params;
-    const resultado = await dataService.consultarClientePorCedula(cedula);
-    
-    if (resultado.success) {
-      res.json(resultado);
-    } else {
-      res.status(404).json(resultado);
-    }
+    console.log('📊 Obteniendo estadísticas globales...');
+    const resultado = await dataService.obtenerEstadisticasGlobales();
+    res.json(resultado);
   } catch (error) {
-    console.error('❌ Error consultando cliente:', error);
+    console.error('❌ Error obteniendo estadísticas globales:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al consultar cliente',
+      message: 'Error al obtener estadísticas globales',
+      error: error.message
+    });
+  }
+});
+
+// ===== ENDPOINT DE PRUEBA =====
+router.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Endpoint de prueba funcionando',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ===== ENDPOINT DE DIAGNÓSTICO =====
+router.get('/diagnostico/vistas-particionadas', async (req, res) => {
+  try {
+    console.log('🔍 Iniciando diagnóstico de vistas particionadas...');
+    const diagnostico = await dataService.diagnosticarVistasParticionadas();
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      diagnostico: diagnostico
+    });
+  } catch (error) {
+    console.error('❌ Error en diagnóstico:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error en diagnóstico de vistas particionadas',
       error: error.message
     });
   }

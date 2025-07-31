@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POLI-CAR - Gestionar Clientes</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>POLI-CAR</h1>
+    <h2>👤 Gestionar Clientes</h2>
+    
+    <!-- Formulario para registrar/actualizar cliente -->
+    <div class="form-section">
+        <h3 id="formTitle">Registrar Nuevo Cliente</h3>
+        <form id="clienteForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="cedula">Cédula *</label>
+                    <input type="text" id="cedula" name="cedula" required placeholder="Ej: 1234567890">
+                </div>
+                <div class="form-group">
+                    <label for="nombre">Nombre *</label>
+                    <input type="text" id="nombre" name="nombre" required placeholder="Ej: Juan Carlos">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="apellido">Apellido *</label>
+                    <input type="text" id="apellido" name="apellido" required placeholder="Ej: Pérez González">
+                </div>
+                <div class="form-group">
+                    <label for="zona">Zona *</label>
+                    <select id="zona" name="zona" required>
+                        <option value="">Seleccionar zona</option>
+                        <option value="Norte">Norte</option>
+                        <option value="Sur">Sur</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-buttons">
+                <button type="submit" id="submitBtn">Registrar Cliente</button>
+                <button type="button" id="cancelBtn" style="display: none;">Cancelar</button>
+                <button type="button" id="clearBtn">Limpiar</button>
+            </div>
+            
+            <p id="clienteMessage" class="message"></p>
+        </form>
+    </div>
+
+    <!-- Sección de búsqueda -->
+    <div class="search-section">
+        <h3>🔍 Buscar Cliente</h3>
+        <div class="search-form">
+            <input type="text" id="searchCedula" placeholder="Buscar por cédula...">
+            <button type="button" id="searchBtn">Buscar</button>
+            <button type="button" id="refreshBtn">Actualizar Lista</button>
+        </div>
+    </div>
+
+    <!-- Lista de clientes -->
+    <div class="list-section">
+        <h3>📋 Lista de Clientes</h3>
+        <div id="clientesContainer">
+            <p>Cargando clientes...</p>
+        </div>
+    </div>
+
+    <!-- Modal para confirmar eliminación -->
+    <div id="deleteModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>⚠️ Confirmar Eliminación</h3>
+            <p id="deleteMessage">¿Está seguro de que desea eliminar este cliente?</p>
+            <div class="modal-buttons">
+                <button id="confirmDeleteBtn" class="delete-btn">Eliminar</button>
+                <button id="cancelDeleteBtn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para mostrar detalles del cliente -->
+    <div id="detailModal" class="modal" style="display: none;">
+        <div class="modal-content large">
+            <h3>👤 Detalles del Cliente</h3>
+            <div id="clienteDetails"></div>
+            <button id="closeDetailBtn">Cerrar</button>
+        </div>
+    </div>
+
+    <div class="nav-links">
+        <a href="dashboard.html">Volver al Dashboard</a>
+        <a href="index.html">Cerrar Sesión</a>
+    </div>
+</div>
+
+<script>
+// --- VARIABLES GLOBALES ---
+let clienteEnEdicion = null;
+let clienteParaEliminar = null;
+
+// --- FUNCIONES AUXILIARES ---
+function showMessage(message, isSuccess = false) {
+    const messageElement = document.getElementById('clienteMessage');
+    messageElement.textContent = message;
+    messageElement.className = isSuccess ? 'message success' : 'message error';
+    messageElement.style.display = 'block';
+    
+    setTimeout(() => {
+        messageElement.style.display = 'none';
+    }, 5000);
+}
+
+function limpiarFormulario() {
+    document.getElementById('clienteForm').reset();
+    clienteEnEdicion = null;
+    document.getElementById('formTitle').textContent = 'Registrar Nuevo Cliente';
+    document.getElementById('submitBtn').textContent = 'Registrar Cliente';
+    document.getElementById('cancelBtn').style.display = 'none';
+    document.getElementById('cedula').readOnly = false;
+}
+
+// --- REGISTRO/ACTUALIZACIÓN DE CLIENTE ---
+document.getElementById('clienteForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+        const clienteData = {
+            cedula: formData.get('cedula').trim(),
+            nombre: formData.get('nombre').trim(),
+            apellido: formData.get('apellido').trim(),
+            zona: formData.get('zona')
+        };    // Validación básica
+    if (!clienteData.cedula || !clienteData.nombre || !clienteData.apellido || !clienteData.zona) {
+        showMessage('Por favor, complete todos los campos obligatorios.');
+        return;
+    }
+
+    try {
+        let url, method, successMessage;
+        
+        if (clienteEnEdicion) {
+            // Actualizar cliente existente
+            url = `/api/clientes/${clienteData.cedula}`;
+            method = 'PUT';
+            successMessage = 'Cliente actualizado exitosamente';
+        } else {
+            // Registrar nuevo cliente
+            url = '/api/clientes';
+            method = 'POST';
+            successMessage = 'Cliente registrado exitosamente';
+        }
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(clienteData)
+        });
+
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            showMessage(resultado.message || successMessage, true);
+            limpiarFormulario();
+            cargarClientes(); // Recargar la lista
+        } else {
+            showMessage(resultado.message || 'Error al procesar la solicitud');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error de conexión con el servidor');
+    }
+});
+
+// --- CARGAR LISTA DE CLIENTES ---
+async function cargarClientes() {
+    try {
+        const response = await fetch('/api/clientes');
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            mostrarClientes(resultado.data);
+        } else {
+            document.getElementById('clientesContainer').innerHTML = 
+                `<p class="error">Error: ${resultado.message}</p>`;
+        }
+    } catch (error) {
+        console.error('Error cargando clientes:', error);
+        document.getElementById('clientesContainer').innerHTML = 
+            '<p class="error">Error de conexión al cargar clientes</p>';
+    }
+}
+
+// --- MOSTRAR CLIENTES EN LA LISTA ---
+function mostrarClientes(clientes) {
+    const container = document.getElementById('clientesContainer');
+    
+    if (!clientes || clientes.length === 0) {
+        container.innerHTML = '<p>No hay clientes registrados.</p>';
+        return;
+    }
+
+    let html = '<div class="clientes-grid">';
+    
+    clientes.forEach(cliente => {
+        html += `
+            <div class="cliente-card">
+                <div class="cliente-header">
+                    <h4>👤 ${cliente.nombre} ${cliente.apellido}</h4>
+                    <span class="zona-badge zona-${cliente.zona.toLowerCase()}">${cliente.zona}</span>
+                </div>
+                <div class="cliente-info">
+                    <p><strong>Cédula:</strong> ${cliente.cedula}</p>
+                    <p><strong>Zona:</strong> ${cliente.zona}</p>
+                    <p><strong>Vehículos:</strong> ${cliente.total_vehiculos || 0}</p>
+                    <p><strong>Reparaciones:</strong> ${cliente.total_reparaciones || 0}</p>
+                    <p><strong>Total gastado:</strong> $${(cliente.total_gastado || 0).toFixed(2)}</p>
+                </div>
+                <div class="cliente-actions">
+                    <button onclick="verDetallesCliente('${cliente.cedula}')" class="btn-view">👁️ Ver</button>
+                    <button onclick="editarCliente('${cliente.cedula}')" class="btn-edit">✏️ Editar</button>
+                    <button onclick="confirmarEliminarCliente('${cliente.cedula}', '${cliente.nombre} ${cliente.apellido}')" class="btn-delete">🗑️ Eliminar</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// --- BUSCAR CLIENTE ---
+document.getElementById('searchBtn').addEventListener('click', async () => {
+    const cedula = document.getElementById('searchCedula').value.trim();
+    
+    if (!cedula) {
+        showMessage('Por favor, ingrese una cédula para buscar');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/clientes/${cedula}`);
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            mostrarClientes([resultado.data]);
+        } else {
+            showMessage(`Cliente con cédula ${cedula} no encontrado`);
+            document.getElementById('clientesContainer').innerHTML = 
+                '<p>Cliente no encontrado.</p>';
+        }
+    } catch (error) {
+        console.error('Error en búsqueda:', error);
+        showMessage('Error al buscar cliente');
+    }
+});
+
+// --- VER DETALLES DEL CLIENTE ---
+async function verDetallesCliente(cedula) {
+    try {
+        const response = await fetch(`/api/clientes/${cedula}/detalles`);
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            const cliente = resultado.data;
+            let html = `
+                <div class="cliente-detalle">
+                    <div class="detalle-header">
+                        <h4>👤 ${cliente.nombre} ${cliente.apellido}</h4>
+                        <span class="zona-badge zona-${cliente.zona.toLowerCase()}">${cliente.zona}</span>
+                    </div>
+                    
+                    <div class="detalle-info">
+                        <p><strong>Cédula:</strong> ${cliente.cedula}</p>
+                        <p><strong>Zona:</strong> ${cliente.zona}</p>
+                    </div>
+
+                    <div class="detalle-estadisticas">
+                        <h5>📊 Estadísticas</h5>
+                        <p><strong>Total de vehículos:</strong> ${cliente.total_vehiculos}</p>
+                        <p><strong>Total de reparaciones:</strong> ${cliente.total_reparaciones}</p>
+                        <p><strong>Total gastado:</strong> $${cliente.total_gastado.toFixed(2)}</p>
+                    </div>
+            `;
+
+            if (cliente.vehiculos && cliente.vehiculos.length > 0) {
+                html += `
+                    <div class="detalle-vehiculos">
+                        <h5>🚗 Vehículos Registrados</h5>
+                        <ul>
+                `;
+                cliente.vehiculos.forEach(vehiculo => {
+                    html += `<li>${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.anio}) - Matrícula: ${vehiculo.matricula}</li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            if (cliente.reparaciones && cliente.reparaciones.length > 0) {
+                html += `
+                    <div class="detalle-reparaciones">
+                        <h5>🛠️ Últimas Reparaciones</h5>
+                        <ul>
+                `;
+                cliente.reparaciones.slice(0, 5).forEach(reparacion => {
+                    const fecha = new Date(reparacion.fecha).toLocaleDateString();
+                    html += `<li>${fecha} - ${reparacion.tipo} (${reparacion.marca} ${reparacion.modelo}) - $${reparacion.precio}</li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            html += '</div>';
+            
+            document.getElementById('clienteDetails').innerHTML = html;
+            document.getElementById('detailModal').style.display = 'block';
+        } else {
+            showMessage('Error al cargar detalles del cliente');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error de conexión al cargar detalles');
+    }
+}
+
+// --- EDITAR CLIENTE ---
+async function editarCliente(cedula) {
+    try {
+        const response = await fetch(`/api/clientes/${cedula}`);
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            const cliente = resultado.data;
+            
+            // Llenar el formulario con los datos del cliente
+            document.getElementById('cedula').value = cliente.cedula;
+            document.getElementById('nombre').value = cliente.nombre;
+            document.getElementById('apellido').value = cliente.apellido;
+            document.getElementById('zona').value = cliente.zona;
+            
+            // Cambiar el estado del formulario a edición
+            clienteEnEdicion = cliente;
+            document.getElementById('formTitle').textContent = 'Actualizar Cliente';
+            document.getElementById('submitBtn').textContent = 'Actualizar Cliente';
+            document.getElementById('cancelBtn').style.display = 'inline-block';
+            document.getElementById('cedula').readOnly = true;
+            
+            // Scroll al formulario
+            document.getElementById('clienteForm').scrollIntoView({ behavior: 'smooth' });
+        } else {
+            showMessage('Error al cargar datos del cliente');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error de conexión');
+    }
+}
+
+// --- CONFIRMAR ELIMINACIÓN ---
+function confirmarEliminarCliente(cedula, nombreCompleto) {
+    clienteParaEliminar = cedula;
+    document.getElementById('deleteMessage').textContent = 
+        `¿Está seguro de que desea eliminar al cliente "${nombreCompleto}"? Esta acción no se puede deshacer.`;
+    document.getElementById('deleteModal').style.display = 'block';
+}
+
+// --- ELIMINAR CLIENTE ---
+document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+    if (!clienteParaEliminar) return;
+
+    try {
+        const response = await fetch(`/api/clientes/${clienteParaEliminar}`, {
+            method: 'DELETE'
+        });
+
+        const resultado = await response.json();
+
+        if (resultado.success) {
+            showMessage(resultado.message || 'Cliente eliminado exitosamente', true);
+            cargarClientes(); // Recargar la lista
+        } else {
+            showMessage(resultado.message || 'Error al eliminar cliente');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage('Error de conexión al eliminar cliente');
+    } finally {
+        document.getElementById('deleteModal').style.display = 'none';
+        clienteParaEliminar = null;
+    }
+});
+
+// --- EVENT LISTENERS ---
+document.getElementById('clearBtn').addEventListener('click', limpiarFormulario);
+document.getElementById('cancelBtn').addEventListener('click', limpiarFormulario);
+document.getElementById('refreshBtn').addEventListener('click', cargarClientes);
+document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+    document.getElementById('deleteModal').style.display = 'none';
+    clienteParaEliminar = null;
+});
+document.getElementById('closeDetailBtn').addEventListener('click', () => {
+    document.getElementById('detailModal').style.display = 'none';
+});
+
+// --- INICIALIZACIÓN ---
+document.addEventListener('DOMContentLoaded', () => {
+    cargarClientes();
+});
+
+// Cerrar modales al hacer clic fuera de ellos
+window.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+        e.target.style.display = 'none';
+    }
+});
+</script>
+</body>
+</html>

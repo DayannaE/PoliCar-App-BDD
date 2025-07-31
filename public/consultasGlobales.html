@@ -306,7 +306,6 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>CI Cliente</th>
                         <th>Matrícula</th>
                         <th>Marca</th>
@@ -319,14 +318,13 @@
                 <tbody>
                     ${vehiculos.map(v => `
                         <tr>
-                            <td>${v.Vehiculo_ID}</td>
-                            <td>${v.CI_Cliente}</td>
-                            <td>${v.Matricula}</td>
-                            <td>${v.Marca}</td>
-                            <td>${v.Modelo}</td>
-                            <td>${v.Sede}</td>
-                            <td><span class="origen-nodo origen-${v.Origen_Nodo.toLowerCase()}">${v.Origen_Nodo}</span></td>
-                            <td>${new Date(v.Fecha_Registro).toLocaleDateString()}</td>
+                            <td>${v.CI_Cliente || 'N/A'}</td>
+                            <td>${v.Matricula || 'N/A'}</td>
+                            <td>${v.Marca || 'N/A'}</td>
+                            <td>${v.Modelo || 'N/A'}</td>
+                            <td>${v.Sede || v.Origen_Nodo || 'N/A'}</td>
+                            <td><span class="origen-nodo origen-${(v.Origen_Nodo || 'desconocido').toLowerCase()}">${v.Origen_Nodo || 'N/A'}</span></td>
+                            <td>${v.Fecha_Registro ? new Date(v.Fecha_Registro).toLocaleDateString() : 'N/A'}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -360,15 +358,15 @@
                 <tbody>
                     ${reparaciones.map(r => `
                         <tr>
-                            <td>${r.Reparacion_ID}</td>
-                            <td>${r.Vehiculo_ID}</td>
-                            <td>${r.Empleado_ID}</td>
-                            <td>${r.Descripcion}</td>
-                            <td>${r.Estado}</td>
+                            <td>${r.Reparacion_ID || 'N/A'}</td>
+                            <td>${r.Vehiculo_ID || 'N/A'}</td>
+                            <td>${r.Empleado_ID || 'N/A'}</td>
+                            <td>${r.Descripcion || 'N/A'}</td>
+                            <td>${r.Estado || 'N/A'}</td>
                             <td>$${r.Costo_Total ? r.Costo_Total.toFixed(2) : '0.00'}</td>
-                            <td>${r.Sede}</td>
-                            <td><span class="origen-nodo origen-${r.Origen_Nodo.toLowerCase()}">${r.Origen_Nodo}</span></td>
-                            <td>${new Date(r.Fecha_Inicio).toLocaleDateString()}</td>
+                            <td>${r.Sede || r.Origen_Nodo || 'N/A'}</td>
+                            <td><span class="origen-nodo origen-${(r.Origen_Nodo || 'desconocido').toLowerCase()}">${r.Origen_Nodo || 'N/A'}</span></td>
+                            <td>${r.Fecha_Inicio ? new Date(r.Fecha_Inicio).toLocaleDateString() : 'N/A'}</td>
                         </tr>
                     `).join('')}
                 </tbody>

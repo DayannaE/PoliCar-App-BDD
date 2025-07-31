@@ -376,15 +376,24 @@ async function guardarReparacion(event) {
   event.preventDefault();
   
   const formData = new FormData(formReparacion);
+  
+  // Generar ID único si es nueva reparación (dentro del rango de SQL Server int)
+  // Usando timestamp reducido + random para evitar colisiones
+  const timestamp = Math.floor(Date.now() / 1000); // Reducir a segundos desde época
+  const random = Math.floor(Math.random() * 1000); // 0-999
+  const idReparacion = editandoReparacion || (timestamp % 1000000) * 1000 + random;
+  
   const reparacionData = {
+    id: idReparacion,
     matricula: formData.get('matricula'),
-    idTaller: parseInt(formData.get('idTaller')),
-    fecha: formData.get('fechaInicio'),
+    fechaReparacion: formData.get('fechaInicio'),
     tipo: formData.get('descripcion'),
-    observaciones: formData.get('observaciones'),
+    observacion: formData.get('observaciones'),
     precio: parseFloat(formData.get('precio')),
-    anio: parseInt(formData.get('anio'))
+    idTaller: parseInt(formData.get('idTaller')) || 1
   };
+  
+  console.log('📤 Enviando datos de reparación:', reparacionData);
   
   try {
     let response;
@@ -414,7 +423,7 @@ async function guardarReparacion(event) {
       showMessage('message', data.message || 'Error al guardar reparación', false);
     }
   } catch (error) {
-    console.error('Error guardando reparación:', error);
+    console.error('❌ Error guardando reparación:', error);
     showMessage('message', 'Error de conexión al guardar reparación', false);
   }
 }

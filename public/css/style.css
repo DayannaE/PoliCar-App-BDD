@@ -693,3 +693,364 @@ p#message.success {
         width: 95%;
     }
 }
+
+/* =====================================================
+   ESTILOS ESPECÍFICOS PARA GESTIÓN DE CLIENTES
+   ===================================================== */
+
+/* Grid de clientes */
+.clientes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Tarjeta de cliente */
+.cliente-card {
+    background: #fff;
+    border: 1px solid #e0e6ed;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.cliente-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+/* Header de la tarjeta de cliente */
+.cliente-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.cliente-header h4 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 16px;
+}
+
+/* Badges de zona */
+.zona-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.zona-norte {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+}
+
+.zona-sur {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    border: 1px solid #e1bee7;
+}
+
+/* Información del cliente */
+.cliente-info {
+    margin-bottom: 15px;
+}
+
+.cliente-info p {
+    margin: 5px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.cliente-info strong {
+    color: #2c3e50;
+}
+
+/* Acciones de cliente */
+.cliente-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.cliente-actions button {
+    flex: 1;
+    min-width: 80px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-view {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.btn-view:hover {
+    background-color: #138496;
+}
+
+.btn-edit {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.btn-edit:hover {
+    background-color: #e0a800;
+}
+
+.btn-delete {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+}
+
+/* Sección de búsqueda */
+.search-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border: 1px solid #e9ecef;
+}
+
+.search-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.search-form input {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.search-form button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+#searchBtn {
+    background-color: #007bff;
+    color: white;
+}
+
+#searchBtn:hover {
+    background-color: #0056b3;
+}
+
+#refreshBtn {
+    background-color: #28a745;
+    color: white;
+}
+
+#refreshBtn:hover {
+    background-color: #1e7e34;
+}
+
+/* Modal grande para detalles */
+.modal-content.large {
+    max-width: 800px;
+    width: 90%;
+}
+
+/* Detalles del cliente en modal */
+.cliente-detalle {
+    text-align: left;
+}
+
+.detalle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.detalle-info,
+.detalle-estadisticas,
+.detalle-vehiculos,
+.detalle-reparaciones {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #007bff;
+}
+
+.detalle-estadisticas {
+    border-left-color: #28a745;
+}
+
+.detalle-vehiculos {
+    border-left-color: #ffc107;
+}
+
+.detalle-reparaciones {
+    border-left-color: #dc3545;
+}
+
+.detalle-estadisticas h5,
+.detalle-vehiculos h5,
+.detalle-reparaciones h5 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #2c3e50;
+}
+
+.detalle-vehiculos ul,
+.detalle-reparaciones ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.detalle-vehiculos li,
+.detalle-reparaciones li {
+    margin-bottom: 5px;
+    color: #555;
+}
+
+/* Formulario de cliente */
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    flex: 1;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.form-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.form-buttons button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#submitBtn {
+    background-color: #007bff;
+    color: white;
+    flex: 1;
+}
+
+#submitBtn:hover {
+    background-color: #0056b3;
+}
+
+#cancelBtn {
+    background-color: #6c757d;
+    color: white;
+}
+
+#cancelBtn:hover {
+    background-color: #545b62;
+}
+
+#clearBtn {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+#clearBtn:hover {
+    background-color: #e0a800;
+}
+
+/* Responsive para clientes */
+@media (max-width: 768px) {
+    .clientes-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .search-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-form input {
+        min-width: auto;
+    }
+    
+    .cliente-actions {
+        justify-content: center;
+    }
+    
+    .cliente-actions button {
+        flex: none;
+        min-width: 90px;
+    }
+    
+    .form-buttons {
+        flex-direction: column;
+    }
+    
+    .detalle-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
