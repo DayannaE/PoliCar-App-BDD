@@ -395,7 +395,7 @@ router.post('/vehiculos', async (req, res) => {
 
     const resultado = await dataService.registrarVehiculo({
       cedulaCliente: ciCliente, 
-      matricula, 
+      placa: matricula,
       marca, 
       modelo
     });
@@ -542,13 +542,13 @@ router.post('/reparaciones', async (req, res) => {
     // Mapear correctamente los parámetros esperados por dataService.registrarReparacion
     const resultado = await dataService.registrarReparacion({
       idReparacion: parseInt(id),
-      matricula: matricula,
+      placa: matricula,
       fecha: new Date(fechaReparacion),
-      tipo: tipo || 'Reparación General',
+      descripcion: tipo || 'Reparación General',
       observaciones: observacion || '',
       anio: new Date().getFullYear(),
       precio: parseFloat(precio),
-      idTaller: parseInt(idTaller) || 1
+      sedeTaller: parseInt(idTaller) || 1
     });
 
     res.status(201).json(resultado);
@@ -597,7 +597,7 @@ router.get('/consultar-reparacion', async (req, res) => {
       });
     }
 
-    const resultado = await dataService.consultarReparaciones({ ci, matricula });
+    const resultado = await dataService.consultarReparaciones({ ci, placa: matricula });
     
     if (resultado.data && resultado.data.length > 0) {
       res.json(resultado);

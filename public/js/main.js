@@ -70,7 +70,7 @@ if (registrarVehiculoForm) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ ciCliente, matricula, marca, modelo })
+        body: JSON.stringify({ ciCliente, placa: matricula, marca, modelo })
       });
 
       const data = await response.json();
@@ -143,7 +143,7 @@ if (registrarReparacionForm) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ id, matricula, fechaReparacion, idRepuesto, observacion, precio })
+        body: JSON.stringify({ id, placa: matricula, fechaReparacion, idRepuesto, observacion, precio })
       });
 
       const data = await response.json();
@@ -211,7 +211,7 @@ if (consultarReparacionForm) {
 
     const queryParams = new URLSearchParams();
     if (ci) queryParams.append('ci', ci);
-    if (matricula) queryParams.append('matricula', matricula);
+    if (matricula) queryParams.append('placa', matricula);
 
     try {
       const response = await fetch(`/api/consultar-reparacion?${queryParams.toString()}`);
@@ -230,7 +230,7 @@ if (consultarReparacionForm) {
               <div class="card-body">
                 <div class="info-row">
                   <span class="label">🚗 Matrícula:</span>
-                  <span class="value">${reparacion.matricula || 'N/A'}</span>
+                  <span class="value">${reparacion.placa || 'N/A'}</span>
                 </div>
                 <div class="info-row">
                   <span class="label">📅 Fecha:</span>
@@ -238,7 +238,7 @@ if (consultarReparacionForm) {
                 </div>
                 <div class="info-row">
                   <span class="label">🔨 Tipo:</span>
-                  <span class="value">${reparacion.tipo || 'N/A'}</span>
+                  <span class="value">${reparacion.descripcion || 'N/A'}</span>
                 </div>
                 <div class="info-row">
                   <span class="label">📝 Observaciones:</span>

@@ -42,8 +42,8 @@
       </div>
       <form id="formVehiculo">
         <div class="form-group">
-          <label for="modalMatricula">Matrícula:</label>
-          <input type="text" id="modalMatricula" name="matricula" required>
+          <label for="modalPlaca">Placa:</label>
+          <input type="text" id="modalPlaca" name="placa" required>
         </div>
         <div class="form-group">
           <label for="modalCedulaCliente">Cédula Cliente:</label>
@@ -65,7 +65,7 @@
         </div>
         <div class="form-group">
           <label for="modalAnio">Año:</label>
-          <input type="number" id="modalAnio" name="anio" min="1900" max="2030">
+          <input type="number" id="modalAnio" name="anio" min="1980" max="2026">
         </div>
         <div class="modal-actions">
           <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
@@ -281,15 +281,15 @@ function mostrarVehiculos(vehiculos) {
     
     html += `
       <tr>
-        <td><strong>${vehiculo.matricula}</strong></td>
+        <td><strong>${vehiculo.placa}</strong></td>
         <td>${nombreCliente}</td>
         <td>${vehiculo.marca || 'N/A'}</td>
         <td>${vehiculo.modelo || 'N/A'}</td>
         <td>${vehiculo.anio || 'N/A'}</td>
         <td>${fechaCompra}</td>
         <td class="acciones">
-          <button class="btn-editar" onclick="editarVehiculo('${vehiculo.matricula}')">✏️ Editar</button>
-          <button class="btn-eliminar" onclick="eliminarVehiculo('${vehiculo.matricula}')">🗑️ Eliminar</button>
+          <button class="btn-editar" onclick="editarVehiculo('${vehiculo.placa}')">✏️ Editar</button>
+          <button class="btn-eliminar" onclick="eliminarVehiculo('${vehiculo.placa}')">🗑️ Eliminar</button>
         </td>
       </tr>
     `;
@@ -319,7 +319,7 @@ function filtrarVehiculos() {
   const vehiculosFiltrados = vehiculosData.filter(vehiculo => {
     const nombreCliente = `${vehiculo.nombre_cliente || ''} ${vehiculo.apellido_cliente || ''}`.toLowerCase();
     return (
-      vehiculo.matricula.toLowerCase().includes(termino) ||
+      vehiculo.placa.toLowerCase().includes(termino) ||
       vehiculo.marca?.toLowerCase().includes(termino) ||
       vehiculo.modelo?.toLowerCase().includes(termino) ||
       vehiculo.cedula_cliente?.toLowerCase().includes(termino) ||
@@ -335,21 +335,21 @@ function abrirModalNuevo() {
   editandoVehiculo = null;
   modalTitle.textContent = 'Nuevo Vehículo';
   formVehiculo.reset();
-  document.getElementById('modalMatricula').readOnly = false;
+  document.getElementById('modalPlaca').readOnly = false;
   modalVehiculo.style.display = 'block';
 }
 
 // Editar vehículo
-function editarVehiculo(matricula) {
-  const vehiculo = vehiculosData.find(v => v.matricula === matricula);
+function editarVehiculo(placa) {
+  const vehiculo = vehiculosData.find(v => v.placa === placa);
   if (!vehiculo) return;
   
-  editandoVehiculo = matricula;
+  editandoVehiculo = placa;
   modalTitle.textContent = 'Editar Vehículo';
   
   // Llenar el formulario
-  document.getElementById('modalMatricula').value = vehiculo.matricula;
-  document.getElementById('modalMatricula').readOnly = true;
+  document.getElementById('modalPlaca').value = vehiculo.placa;
+  document.getElementById('modalPlaca').readOnly = true;
   document.getElementById('modalCedulaCliente').value = vehiculo.cedula_cliente || '';
   document.getElementById('modalMarca').value = vehiculo.marca || '';
   document.getElementById('modalModelo').value = vehiculo.modelo || '';
@@ -364,9 +364,9 @@ function editarVehiculo(matricula) {
 }
 
 // Eliminar vehículo
-function eliminarVehiculo(matricula) {
-  vehiculoAEliminar = matricula;
-  document.getElementById('vehiculoAEliminar').textContent = matricula;
+function eliminarVehiculo(placa) {
+  vehiculoAEliminar = placa;
+  document.getElementById('vehiculoAEliminar').textContent = placa;
   modalConfirmar.style.display = 'block';
 }
 
@@ -376,7 +376,7 @@ async function guardarVehiculo(event) {
   
   const formData = new FormData(formVehiculo);
   const vehiculoData = {
-    matricula: formData.get('matricula'),
+    placa: formData.get('placa'),
     cedulaCliente: formData.get('cedulaCliente'),
     marca: formData.get('marca'),
     modelo: formData.get('modelo'),
@@ -400,7 +400,7 @@ async function guardarVehiculo(event) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ciCliente: vehiculoData.cedulaCliente,
-          matricula: vehiculoData.matricula,
+          placa: vehiculoData.placa,
           marca: vehiculoData.marca,
           modelo: vehiculoData.modelo,
           fechaCompra: vehiculoData.fechaCompra,

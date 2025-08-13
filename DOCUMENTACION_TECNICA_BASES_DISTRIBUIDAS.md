@@ -522,31 +522,33 @@ El sistema implementa transacciones locales siempre que sea posible, minimizando
 
 ```javascript
 // Implementación de transacción local para registro de reparación
-async registrarReparacion(reparacionData) {
-  const transaction = new sql.Transaction();
-  
-  try {
-    await transaction.begin();
-    
-    // 1. Validar vehículo existe en sede local
-    const vehiculo = await this.validarVehiculoLocal(reparacionData.matricula);
-    
-    // 2. Validar y reservar repuestos locales
-    await this.reservarRepuestosLocales(reparacionData.repuestos, transaction);
-    
-    // 3. Registrar reparación
-    await this.insertarReparacion(reparacionData, transaction);
-    
-    // 4. Actualizar stock de repuestos
-    await this.actualizarInventarioLocal(reparacionData.repuestos, transaction);
-    
-    await transaction.commit();
-    return { success: true, reparacion: resultado };
-    
-  } catch (error) {
-    await transaction.rollback();
-    throw new Error(`Error en transacción de reparación: ${error.message}`);
-  }
+async
+registrarReparacion(reparacionData)
+{
+    const transaction = new sql.Transaction();
+
+    try {
+        await transaction.begin();
+
+        // 1. Validar vehículo existe en sede local
+        const vehiculo = await this.validarVehiculoLocal(reparacionData.placa);
+
+        // 2. Validar y reservar repuestos locales
+        await this.reservarRepuestosLocales(reparacionData.repuestos, transaction);
+
+        // 3. Registrar reparación
+        await this.insertarReparacion(reparacionData, transaction);
+
+        // 4. Actualizar stock de repuestos
+        await this.actualizarInventarioLocal(reparacionData.repuestos, transaction);
+
+        await transaction.commit();
+        return {success: true, reparacion: resultado};
+
+    } catch (error) {
+        await transaction.rollback();
+        throw new Error(`Error en transacción de reparación: ${error.message}`);
+    }
 }
 ```
 

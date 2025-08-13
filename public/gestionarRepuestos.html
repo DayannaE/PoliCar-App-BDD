@@ -14,7 +14,7 @@
   <!-- Controles superiores -->
   <div class="controles-superiores">
     <div class="busqueda-container">
-      <input type="text" id="busquedaRepuestos" placeholder="🔍 Buscar por ID, nombre, tipo...">
+      <input type="text" id="busquedaRepuestos" placeholder="🔍 Buscar por ID, nombre">
     </div>
     <div class="acciones-container">
       <button id="btnNuevoRepuesto" class="btn-nuevo">➕ Nuevo Repuesto</button>
@@ -43,15 +43,11 @@
       <form id="formRepuesto">
         <div class="form-group">
           <label for="modalIdRepuesto">ID Repuesto:</label>
-          <input type="number" id="modalIdRepuesto" name="idRepuesto" required>
+          <input type="number" id="modalIdRepuesto" name="idRepuesto" min="1" required>
         </div>
         <div class="form-group">
           <label for="modalNombre">Nombre:</label>
           <input type="text" id="modalNombre" name="nombre" required>
-        </div>
-        <div class="form-group">
-          <label for="modalTipo">Tipo:</label>
-          <input type="text" id="modalTipo" name="tipo" required>
         </div>
         <div class="form-group">
           <label for="modalDescripcion">Descripción:</label>
@@ -60,6 +56,10 @@
         <div class="form-group">
           <label for="modalCantidad">Cantidad Disponible:</label>
           <input type="number" id="modalCantidad" name="cantidadDisponible" min="0" required>
+        </div>
+        <div class="form-group">
+          <label for="modalPrecio">Precio Unitario:</label>
+          <input type="number" id="modalPrecio" name="precioUnitario" min="0" step="0.01" required>
         </div>
         <div class="modal-actions">
           <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
@@ -203,7 +203,7 @@ function mostrarRepuestos(repuestos) {
       <tr>
         <td><strong>${repuesto.id_repuesto}</strong></td>
         <td>${repuesto.nombre || 'N/A'}</td>
-        <td>${repuesto.tipo || 'N/A'}</td>
+        <td>${repuesto.descripcion || 'N/A'}</td>
         <td title="${repuesto.descripcion || ''}">${descripcionCorta}</td>
         <td>${estadoCantidad}</td>
         <td class="acciones">
@@ -239,7 +239,7 @@ function filtrarRepuestos() {
     return (
       repuesto.id_repuesto.toString().includes(termino) ||
       repuesto.nombre?.toLowerCase().includes(termino) ||
-      repuesto.tipo?.toLowerCase().includes(termino) ||
+      repuesto.descripcion?.toLowerCase().includes(termino) ||
       repuesto.descripcion?.toLowerCase().includes(termino)
     );
   });
@@ -268,7 +268,7 @@ function editarRepuesto(id) {
   document.getElementById('modalIdRepuesto').value = repuesto.id_repuesto;
   document.getElementById('modalIdRepuesto').readOnly = true;
   document.getElementById('modalNombre').value = repuesto.nombre || '';
-  document.getElementById('modalTipo').value = repuesto.tipo || '';
+  document.getElementById('modalTipo').value = repuesto.descripcion || '';
   document.getElementById('modalDescripcion').value = repuesto.descripcion || '';
   document.getElementById('modalCantidad').value = repuesto.cantidad_disponible || 0;
   

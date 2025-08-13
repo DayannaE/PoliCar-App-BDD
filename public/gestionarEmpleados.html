@@ -54,8 +54,8 @@
           <input type="date" id="modalFechaIngreso" name="fechaIngreso">
         </div>
         <div class="form-group">
-          <label for="modalSueldo">Sueldo:</label>
-          <input type="number" id="modalSueldo" name="sueldo" step="0.01" min="0">
+          <label for="modalSalario">Salario:</label>
+          <input type="number" id="modalSalario" name="salario" step="0.01" min="0">
         </div>
         <div class="modal-actions">
           <button type="button" id="btnCancelar" class="btn-cancelar">Cancelar</button>
@@ -172,7 +172,7 @@ function mostrarEmpleados(empleados) {
             <th>Cédula</th>
             <th>Nombre</th>
             <th>Fecha Ingreso</th>
-            <th>Sueldo</th>
+            <th>Salario</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -184,8 +184,8 @@ function mostrarEmpleados(empleados) {
       ? new Date(empleado.fecha_ingreso).toLocaleDateString('es-ES')
       : 'N/A';
       
-    const sueldo = empleado.sueldo 
-      ? `$${parseFloat(empleado.sueldo).toFixed(2)}`
+    const salario = empleado.salario
+      ? `$${parseFloat(empleado.salario).toFixed(2)}`
       : 'N/A';
     
     html += `
@@ -193,7 +193,7 @@ function mostrarEmpleados(empleados) {
         <td><strong>${empleado.id_empleado}</strong></td>
         <td>${empleado.nombre || 'N/A'}</td>
         <td>${fechaIngreso}</td>
-        <td class="precio">${sueldo}</td>
+        <td class="precio">${salario}</td>
         <td class="acciones">
           <button class="btn-editar" onclick="editarEmpleado('${empleado.id_empleado}')">✏️ Editar</button>
           <button class="btn-eliminar" onclick="eliminarEmpleado('${empleado.id_empleado}')">🗑️ Eliminar</button>
@@ -254,7 +254,7 @@ function editarEmpleado(cedula) {
   document.getElementById('modalCedulaEmpleado').value = empleado.id_empleado;
   document.getElementById('modalCedulaEmpleado').readOnly = true;
   document.getElementById('modalNombre').value = empleado.nombre || '';
-  document.getElementById('modalSueldo').value = empleado.sueldo || '';
+  document.getElementById('modalSalario').value = empleado.salario || '';
   
   if (empleado.fecha_ingreso) {
     const fecha = new Date(empleado.fecha_ingreso);
@@ -281,7 +281,7 @@ async function guardarEmpleado(event) {
     cedulaEmpleado: formData.get('cedulaEmpleado'),
     nombre: formData.get('nombre'),
     fechaIngreso: formData.get('fechaIngreso') || null,
-    sueldo: parseFloat(formData.get('sueldo')) || null
+    salario: parseFloat(formData.get('salario')) || null
   };
   
   try {
@@ -302,7 +302,7 @@ async function guardarEmpleado(event) {
           cedula: empleadoData.cedulaEmpleado,
           nombre: empleadoData.nombre,
           fechaContratacion: empleadoData.fechaIngreso,
-          salario: empleadoData.sueldo
+          salario: empleadoData.salario
         })
       });
     }

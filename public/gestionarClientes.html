@@ -21,14 +21,14 @@
                     <input type="text" id="cedula" name="cedula" required placeholder="Ej: 1234567890">
                 </div>
                 <div class="form-group">
-                    <label for="nombre">Nombre *</label>
+                    <label for="nombre">Nombres *</label>
                     <input type="text" id="nombre" name="nombre" required placeholder="Ej: Juan Carlos">
                 </div>
             </div>
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="apellido">Apellido *</label>
+                    <label for="apellido">Apellidos *</label>
                     <input type="text" id="apellido" name="apellido" required placeholder="Ej: Pérez González">
                 </div>
                 <div class="form-group">
@@ -294,7 +294,7 @@ async function verDetallesCliente(cedula) {
                         <ul>
                 `;
                 cliente.vehiculos.forEach(vehiculo => {
-                    html += `<li>${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.anio}) - Matrícula: ${vehiculo.matricula}</li>`;
+                    html += `<li>${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.anio}) - Matrícula: ${vehiculo.placa}</li>`;
                 });
                 html += '</ul></div>';
             }
@@ -307,7 +307,7 @@ async function verDetallesCliente(cedula) {
                 `;
                 cliente.reparaciones.slice(0, 5).forEach(reparacion => {
                     const fecha = new Date(reparacion.fecha).toLocaleDateString();
-                    html += `<li>${fecha} - ${reparacion.tipo} (${reparacion.marca} ${reparacion.modelo}) - $${reparacion.precio}</li>`;
+                    html += `<li>${fecha} - ${reparacion.descripcion} (${reparacion.marca} ${reparacion.modelo}) - $${reparacion.precio}</li>`;
                 });
                 html += '</ul></div>';
             }

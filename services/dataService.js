@@ -431,7 +431,7 @@ class DataService {
     return await this.executeOnNode(async (pool) => {
       const request = pool.request();
       request.input('cedulaCliente', sql.VarChar, cedulaCliente);
-      request.input('matricula', sql.VarChar, matricula);
+      request.input('placa', sql.VarChar, matricula);
       request.input('marca', sql.VarChar, marca);
       request.input('modelo', sql.VarChar, modelo);
       request.input('fechaCompra', sql.Date, fechaCompra || new Date());
@@ -472,7 +472,7 @@ class DataService {
       request.input('cedulaEmpleado', sql.VarChar, cedulaEmpleado);
       request.input('nombre', sql.VarChar, nombre);
       request.input('fechaIngreso', sql.Date, fechaIngreso || new Date());
-      request.input('sueldo', sql.Decimal(10, 2), sueldo);
+      request.input('salario', sql.Decimal(10, 2), sueldo);
       
       const resultEmpleado = await request.query(`
         INSERT INTO Empleado (cedula, nombre, fecha_ingreso, sueldo) 
@@ -542,8 +542,8 @@ class DataService {
       request.input('observaciones', sql.Text, observaciones);
       request.input('anio', sql.Int, anio || new Date().getFullYear());
       request.input('precio', sql.Decimal(10, 2), precio);
-      request.input('matricula', sql.VarChar, matricula);
-      request.input('idTaller', sql.Int, idTaller);
+      request.input('placa', sql.VarChar, matricula);
+      request.input('sedeTaller', sql.Int, idTaller);
       
       const tableName = `Reparacion_${this.currentSede}`;
       const resultReparacion = await request.query(`
@@ -572,7 +572,7 @@ class DataService {
     try {
       return await this.executeOnNode(async (pool) => {
         const request = pool.request();
-        request.input('matricula', sql.VarChar, matricula);
+        request.input('placa', sql.VarChar, matricula);
         
         const tablaVehiculo = `Vehiculo_General_${targetSede}`;
         const result = await request.query(`
@@ -646,9 +646,9 @@ class DataService {
         request.input('cedulaCliente', sql.VarChar, filtros.cedulaCliente);
       }
 
-      if (filtros.matricula) {
+      if (filtros.placa) {
         query += ' AND r.matricula = @matricula';
-        request.input('matricula', sql.VarChar, filtros.matricula);
+        request.input('placa', sql.VarChar, filtros.placa);
       }
 
       query += ' ORDER BY r.fecha DESC';
@@ -734,7 +734,7 @@ class DataService {
         }, sede);
 
         resultado.fragmentos[`Sede_${sede}`] = {
-          tipo: "Fragmentación Vertical",
+          descripcion: "Fragmentación Vertical",
           descripcion: `Datos distribuidos verticalmente en Sede ${sede}`,
           tabla_replicada: {
             nombre: "Vehiculo_Matricula",
@@ -1298,7 +1298,7 @@ class DataService {
     
     return await this.executeOnNode(async (pool) => {
       const request = pool.request();
-      request.input('matricula', sql.VarChar, matricula);
+      request.input('placa', sql.VarChar, matricula);
       request.input('cedulaCliente', sql.VarChar, cedulaCliente);
       request.input('marca', sql.VarChar, marca);
       request.input('modelo', sql.VarChar, modelo);
@@ -1343,7 +1343,7 @@ class DataService {
       request.input('cedulaEmpleado', sql.VarChar, cedulaEmpleado);
       request.input('nombre', sql.VarChar, nombre);
       request.input('fechaIngreso', sql.Date, fechaIngreso);
-      request.input('sueldo', sql.Decimal(10, 2), sueldo);
+      request.input('salario', sql.Decimal(10, 2), sueldo);
       
       const result = await request.query(`
         UPDATE Empleado 
@@ -1422,8 +1422,8 @@ class DataService {
       request.input('observaciones', sql.Text, observaciones);
       request.input('anio', sql.Int, anio);
       request.input('precio', sql.Decimal(10, 2), precio);
-      request.input('matricula', sql.VarChar, matricula);
-      request.input('idTaller', sql.Int, idTaller);
+      request.input('placa', sql.VarChar, matricula);
+      request.input('sedeTaller', sql.Int, idTaller);
       
       const tableName = `Reparacion_${this.currentSede}`;
       const result = await request.query(`
@@ -1460,7 +1460,7 @@ class DataService {
   async eliminarVehiculo(matricula) {
     return await this.executeOnNode(async (pool) => {
       const request = pool.request();
-      request.input('matricula', sql.VarChar, matricula);
+      request.input('placa', sql.VarChar, matricula);
       
       // Primero verificar si tiene reparaciones asociadas
       const tableName = `Reparacion_${this.currentSede}`;
